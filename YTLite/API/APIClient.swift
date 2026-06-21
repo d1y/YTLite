@@ -103,6 +103,7 @@ class APIClient {
         case 200 ... 299:
             return nil
         case 401:
+            OAuthClient.shared.tryRefreshIfNeeded()
             return .unauthorized
         case 403:
             return .forbidden
