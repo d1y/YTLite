@@ -85,14 +85,30 @@ extension InnertubeClient {
     ) -> (duration: String?, isLive: Bool) {
         let overlays = lockup.digArray("thumbnail", "thumbnailViewModel", "overlays") ?? []
         for overlay in overlays {
-            guard let ts = overlay["thumbnailOverlayTimeStatusViewModel"] as? [String: Any]
-            else { continue }
-            if (ts["style"] as? String) == "LIVE" {
-                return (nil, true)
+            if let badge = durationFromBadge(overlay) {
+                return badge
             }
-            return (ts.digString(JSONKey.text, JSONKey.content), false)
+            if let ts = overlay["thumbnailOverlayTimeStatusViewModel"] as? [String: Any] {
+                if (ts["style"] as? String) == "LIVE" {
+                    return (nil, true)
+                }
+                return (ts.digString(JSONKey.text, JSONKey.content), false)
+            }
         }
         return (nil, false)
+    }
+
+    private static func durationFromBadge(
+        _ overlay: [String: Any]
+    ) -> (duration: String?, isLive: Bool)? {
+        guard let bottom = overlay["thumbnailBottomOverlayViewModel"] as? [String: Any],
+              let badges = bottom["badges"] as? [[String: Any]],
+              let badge = badges.first,
+              let badgeVM = badge["thumbnailBadgeViewModel"] as? [String: Any],
+              let text = badgeVM[JSONKey.text] as? String,
+              !text.isEmpty
+        else { return nil }
+        return (text, false)
     }
 
     private static func lockupVideoMeta(
@@ -106,10 +122,12 @@ extension InnertubeClient {
             "metadataRows"
         ) ?? []
         for row in rows {
-            guard let parts = row["metadataParts"] as? [[String: Any]] else { continue }
+            guard let parts = row["metadataParts"] as? [[String: Any]],
+                  parts.count >= 2
+            else { continue }
             let texts = parts.compactMap { $0.digString(JSONKey.text, JSONKey.content) }
-            if !texts.isEmpty {
-                return (texts.first, texts.dropFirst().first)
+            if texts.count >= 2 {
+                return (texts[0], texts[1])
             }
         }
         return (nil, nil)
