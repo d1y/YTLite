@@ -28,7 +28,9 @@ extension HistoryViewController: UITableViewDataSource, UITableViewDelegate {
                   let channelId = video.channelId else {
                 return
             }
-            self.navigationController?.pushViewController(
+            let targetNav = self.navigationController?.parent?
+                .navigationController ?? self.navigationController
+            targetNav?.pushViewController(
                 self.channelViewControllerFactory(
                     channelId,
                     video.channelName
