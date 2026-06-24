@@ -73,10 +73,6 @@ class SubscriptionsViewController: UIViewController {
         cache.clearSubscriptionsFeed()
         loadFeed()
     }
-
-    func scrollViewDidScroll(_ scrollView: UIScrollView) {
-        logVisibleVideos()
-    }
 }
 
 extension SubscriptionsViewController: UITableViewDataSource {

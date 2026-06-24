@@ -139,15 +139,6 @@ extension SubscriptionsViewController {
         continuationToken = page.continuation
         isLoadingMore = false
         tableView.reloadData()
-        logVisibleVideos()
-    }
-
-    func logVisibleVideos() {
-        let visible = tableView.indexPathsForVisibleRows ?? []
-        let items = visible.compactMap { videos[$0.row] }
-        let summary = items.map { "\($0.id) \($0.title)" }
-            .joined(separator: " | ")
-        AppLog.subs("visible [\(items.count)]: \(summary)")
     }
 
     func finishLoadingMore() {
