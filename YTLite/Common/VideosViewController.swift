@@ -92,6 +92,7 @@ class VideosViewController: UIViewController {
         )
         cv.dataSource = self
         cv.delegate = self
+        cv.prefetchDataSource = self
 
         let refresh = UIRefreshControl()
         refresh.addTarget(
@@ -182,7 +183,6 @@ class VideosViewController: UIViewController {
         let theme = ThemeManager.shared
         view.backgroundColor = theme.background
         collectionView?.backgroundColor = theme.background
-        collectionView?.reloadData()
     }
 
     func setPage(_ page: FeedPage) {

@@ -20,6 +20,7 @@ class VideoCell: UICollectionViewCell {
     private let channelLabel = UILabel()
     private let metaLabel = UILabel()
     private var representedChannelId: String?
+    private var cachedTitleHeight: CGFloat = 0
     var onChannelTap: (() -> Void)?
 
     /// Force grid layout regardless of cell width.
@@ -130,6 +131,7 @@ extension VideoCell {
         channelAvatarView.layer.cornerRadius = VideoCell.avatarSize / 2
         channelAvatarView.layer.masksToBounds = true
         channelAvatarView.isUserInteractionEnabled = true
+        channelAvatarView.maxPixelSize = 96
         contentView.addSubview(channelAvatarView)
         titleLabel.font = UIFont.systemFont(ofSize: 13, weight: .medium)
         titleLabel.numberOfLines = 2
@@ -149,6 +151,17 @@ extension VideoCell {
 // MARK: - Layout
 
 extension VideoCell {
+    private func computeTitleHeight(for width: CGFloat) -> CGFloat {
+        if cachedTitleHeight > 0 {
+            return cachedTitleHeight
+        }
+        let height = titleLabel.sizeThatFits(
+            CGSize(width: width, height: 60)
+        ).height
+        cachedTitleHeight = min(height, 52)
+        return cachedTitleHeight
+    }
+
     private func layoutHorizontal(cellWidth: CGFloat) {
         let cellHeight = contentView.bounds.height
         if cellHeight >= 150 {
@@ -171,8 +184,8 @@ extension VideoCell {
         let avatarSz: CGFloat = 32
         let textX = thumbnail.frame.maxX + hPad
         let textW = cellWidth - textX - hPad
-        let titleH = titleLabel.sizeThatFits(CGSize(width: textW, height: 60)).height
-        titleLabel.frame = CGRect(x: textX, y: vPad, width: textW, height: min(titleH, 52))
+        let titleH = computeTitleHeight(for: textW)
+        titleLabel.frame = CGRect(x: textX, y: vPad, width: textW, height: titleH)
         let afterTitle = titleLabel.frame.maxY + 8
         channelAvatarView.isHidden = false
         channelAvatarView.frame = CGRect(x: textX, y: afterTitle, width: avatarSz, height: avatarSz)
@@ -209,8 +222,8 @@ extension VideoCell {
         channelAvatarView.isHidden = true
         let textX = thumbnail.frame.maxX + hPad
         let textW = cellWidth - textX - hPad
-        let titleH = titleLabel.sizeThatFits(CGSize(width: textW, height: 52)).height
-        titleLabel.frame = CGRect(x: textX, y: vPad, width: textW, height: min(titleH, 52))
+        let titleH = computeTitleHeight(for: textW)
+        titleLabel.frame = CGRect(x: textX, y: vPad, width: textW, height: titleH)
         let channelY = titleLabel.frame.maxY + 4
         channelLabel.frame = CGRect(x: textX, y: channelY, width: textW, height: 14)
         let metaY = channelLabel.frame.maxY + 4
@@ -241,8 +254,8 @@ extension VideoCell {
             channelAvatarView.frame = CGRect(x: avatarX, y: avatarY, width: sz, height: sz)
         }
         let titleTop = thumbH + VideoCell.hPad
-        let titleH = titleLabel.sizeThatFits(CGSize(width: textW, height: 52)).height
-        titleLabel.frame = CGRect(x: textX, y: titleTop, width: textW, height: min(titleH, 52))
+        let titleH = computeTitleHeight(for: textW)
+        titleLabel.frame = CGRect(x: textX, y: titleTop, width: textW, height: titleH)
         let channelTop = titleLabel.frame.maxY + 2
         channelLabel.frame = CGRect(x: textX, y: channelTop, width: textW, height: 14)
         let metaTop = channelLabel.frame.maxY + 2
@@ -306,6 +319,7 @@ extension VideoCell {
             thumbnail.setImage(url: url)
         }
         applyWatchProgress(videoId: video.id)
+        cachedTitleHeight = 0
         setNeedsLayout()
     }
 
