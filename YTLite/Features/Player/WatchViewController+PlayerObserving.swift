@@ -106,34 +106,44 @@ extension WatchViewController {
     }
 
     private func seekToSavedPositionIfNeeded() {
-        guard !didSeekToSavedPosition,
-              let prog = WatchProgressStore.shared.progress(
-                  forVideoId: initialVideo.id
-              ),
-              prog.shouldShow,
-              let player = videoPlayerView?.player
-        else {
-            return
-        }
-        let duration = CMTimeGetSeconds(
-            player.currentItem?.duration ?? .zero
-        )
-        guard duration > 0 else {
+        guard !didSeekToSavedPosition else {
             return
         }
         didSeekToSavedPosition = true
-        let position = prog.fraction * duration
-        let target = CMTime(
-            seconds: position,
-            preferredTimescale: 1_000
+        guard let prog = WatchProgressStore.shared
+            .progress(forVideoId: initialVideo.id),
+            prog.shouldShow,
+            prog.fraction < 0.97
+        else {
+            return
+        }
+        seekToProgress(prog)
+    }
+
+    private func seekToProgress(
+        _ prog: WatchProgress
+    ) {
+        guard let player = videoPlayerView?.player
+        else {
+            return
+        }
+        let dur = CMTimeGetSeconds(
+            player.currentItem?.duration ?? .zero
         )
+        guard dur > 0 else {
+            return
+        }
+        let pos = prog.fraction * dur
         player.seek(
-            to: target,
+            to: CMTime(
+                seconds: pos,
+                preferredTimescale: 1_000
+            ),
             toleranceBefore: .zero,
             toleranceAfter: .zero
         )
         AppLog.player(
-            "resumed at \(Int(position))s"
+            "resumed at \(Int(pos))s"
                 + " (\(Int(prog.fraction * 100))%)"
         )
     }
