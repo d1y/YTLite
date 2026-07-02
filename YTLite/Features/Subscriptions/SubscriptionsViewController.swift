@@ -3,6 +3,8 @@ import UIKit
 class SubscriptionsViewController: UIViewController {
     static let skeletonCount = 6
     let service: FeedService
+    let channelTabsService: ChannelTabService
+    let channelsService: SubscribedChannelsService
     let cache: AppCache
     let channelViewControllerFactory: (
         String,
@@ -16,21 +18,25 @@ class SubscriptionsViewController: UIViewController {
     var sortDatesByVideoId: [String: Date] = [:]
     let tableView = UITableView()
     let spinner = UIActivityIndicatorView(style: .white)
+    let channelBar = ChannelAvatarBarView()
+    var subscribedChannels: [SubscribedChannel] = []
+    var selectedChannel: SubscribedChannel?
+    var stashedVideos: [Video] = []
+    var stashedContinuation: String?
+    var stashedSeenVideoIds: Set<String> = []
     var isLoadingInitial = true
     var signInPrompt: SignInEmptyStateView?
 
     init(
-        service: FeedService,
+        dependencies: AppDependencies,
         cache: AppCache = .shared,
-        channelViewControllerFactory: @escaping (
-            String,
-            String
-        ) -> ChannelViewController,
         videoRouter: VideoRouter = .shared
     ) {
-        self.service = service
+        service = dependencies.feedService
+        channelTabsService = dependencies.channelTabService
+        channelsService = dependencies.subscribedChannelsService
+        channelViewControllerFactory = dependencies.makeChannelViewController
         self.cache = cache
-        self.channelViewControllerFactory = channelViewControllerFactory
         self.videoRouter = videoRouter
         super.init(nibName: nil, bundle: nil)
     }
@@ -47,6 +53,7 @@ class SubscriptionsViewController: UIViewController {
         setupTableView()
         setupSpinner()
         setupSignInPrompt()
+        setupChannelBar()
         applyTheme()
         NotificationCenter.default.addObserver(
             self,
@@ -65,19 +72,31 @@ class SubscriptionsViewController: UIViewController {
         loadInitialContent()
     }
 
+    override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+        updateChannelBarFrame()
+    }
+
     @objc
     func applyTheme() {
         let theme = ThemeManager.shared
         view.backgroundColor = theme.background
         tableView.backgroundColor = theme.background
         tableView.separatorColor = theme.separator
+        channelBar.applyTheme()
         tableView.reloadData()
     }
 
     @objc
     func handleRefresh() {
+        if let channel = selectedChannel {
+            loadChannelVideos(channel)
+            return
+        }
         cache.clearSubscriptionsFeed()
+        cache.clearSubscribedChannels()
         loadFeed()
+        loadSubscribedChannels(force: true)
     }
 
     @objc

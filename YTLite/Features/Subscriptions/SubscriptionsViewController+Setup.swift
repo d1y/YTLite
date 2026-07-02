@@ -10,6 +10,7 @@ extension SubscriptionsViewController {
             showSignInPrompt(true)
             return
         }
+        loadSubscribedChannels()
         cache.loadSubscriptionsFeed { [weak self] cachedPage in
             self?.handleCachedSubscriptions(cachedPage)
         }
@@ -106,15 +107,26 @@ extension SubscriptionsViewController {
             finishLoadingMore()
             return
         }
+        if let channel = selectedChannel {
+            loadMoreChannelVideos(
+                continuation: continuation,
+                channelId: channel.id
+            )
+            return
+        }
         service.fetchNextPage(
             continuation: continuation
         ) { [weak self] result in
             DispatchQueue.main.async {
+                guard let self, self.selectedChannel == nil else {
+                    self?.finishLoadingMore()
+                    return
+                }
                 switch result {
                 case let .success(page):
-                    self?.appendPage(page)
+                    self.appendPage(page)
                 case let .failure(error):
-                    self?.finishLoadingMore()
+                    self.finishLoadingMore()
                     AppLog.subs("pagination error: \(error)")
                 }
             }
@@ -153,6 +165,9 @@ private extension SubscriptionsViewController {
         _ cachedPage: FeedPage?,
         firstVisit: Bool = true
     ) {
+        guard selectedChannel == nil else {
+            return
+        }
         if let cachedPage {
             AppLog.subs(
                 "cache-hit → showing "
@@ -162,6 +177,7 @@ private extension SubscriptionsViewController {
             isLoadingInitial = false
             spinner.stopAnimating()
             setPage(cachedPage)
+            harvestChannels(from: cachedPage)
         } else {
             AppLog.subs("no cache → network")
             loadFeed()
@@ -185,9 +201,7 @@ private extension SubscriptionsViewController {
                     "network done \(ms)ms"
                         + " videos=\(page.videos.count)"
                 )
-                self.showSignInPrompt(false)
-                self.cache.setSubscriptionsFeed(page)
-                self.setPage(page)
+                self.applyFeedPage(page)
             case let .failure(error):
                 AppLog.subs(
                     "network failed \(ms)ms: \(error)"
@@ -200,6 +214,19 @@ private extension SubscriptionsViewController {
                 }
             }
         }
+    }
+
+    func applyFeedPage(_ page: FeedPage) {
+        showSignInPrompt(false)
+        cache.setSubscriptionsFeed(page)
+        if selectedChannel == nil {
+            setPage(page)
+        } else {
+            stashedVideos = page.videos
+            stashedContinuation = page.continuation
+            stashedSeenVideoIds = Set(page.videos.map { $0.id })
+        }
+        harvestChannels(from: page)
     }
 
     func pinToEdges(

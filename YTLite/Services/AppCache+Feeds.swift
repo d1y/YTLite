@@ -100,6 +100,48 @@ extension AppCache {
         }
     }
 
+    // MARK: - Subscribed Channels
+    func loadSubscribedChannels(
+        completion: @escaping ([SubscribedChannel]?) -> Void
+    ) {
+        if let channels = subscribedChannels {
+            AppLog.cache("subChannels mem-hit count=\(channels.count)")
+            deliverOnMain(channels, completion: completion)
+            return
+        }
+        loadDiskValue(
+            [SubscribedChannel].self,
+            key: "subscribed_channels",
+            ttl: feedTTL
+        ) { [weak self] channels in
+            guard let self else {
+                return
+            }
+            if let channels {
+                self.subscribedChannels = channels
+                AppLog.cache("subChannels disk-hit count=\(channels.count)")
+            } else {
+                AppLog.cache("subChannels miss")
+            }
+            completion(channels)
+        }
+    }
+
+    func setSubscribedChannels(_ channels: [SubscribedChannel]) {
+        subscribedChannels = channels
+        diskQueue.async { [weak self] in
+            self?.writeDisk(channels, key: "subscribed_channels")
+        }
+        AppLog.cache("subChannels stored count=\(channels.count)")
+    }
+
+    func clearSubscribedChannels() {
+        subscribedChannels = nil
+        diskQueue.async { [weak self] in
+            self?.deleteDisk(key: "subscribed_channels")
+        }
+    }
+
     // MARK: - History
     func cachedHistoryFeed() -> FeedPage? {
         historyFeed
@@ -140,11 +182,13 @@ extension AppCache {
         let channelInfoKeys = channelInfoMemory.keys
         homeFeed = nil
         subscriptionsFeed = nil
+        subscribedChannels = nil
         historyFeed = nil
         channelInfoMemory.removeAll()
         diskQueue.async { [weak self] in
             self?.deleteDisk(key: "home")
             self?.deleteDisk(key: "subscriptions")
+            self?.deleteDisk(key: "subscribed_channels")
             self?.deleteDisk(key: "history")
             channelInfoKeys.forEach {
                 self?.deleteDisk(key: "channel_info_\($0)")

@@ -35,6 +35,7 @@ enum RendererKey {
     static let tvSurfaceContent     = "tvSurfaceContentRenderer"
 
     // Channel renderers
+    static let channel              = "channelRenderer"
     static let channelHeader        = "channelHeaderRenderer"
     static let channelMetadata      = "channelMetadataRenderer"
     static let pageHeader           = "pageHeaderRenderer"
@@ -76,6 +77,7 @@ enum RendererKey {
 enum BrowseID {
     static let home          = "FEwhat_to_watch"
     static let subscriptions = "FEsubscriptions"
+    static let channels      = "FEchannels"
     static let history       = "FEhistory"
     static let library       = "FEmy_youtube"
     static let trending      = "FEtrending"

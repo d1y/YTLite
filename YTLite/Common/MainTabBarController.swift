@@ -130,11 +130,8 @@ class MainTabBarController: UITabBarController {
 
     private func makeSubscriptionsTab() -> UIViewController {
         let subs = RotatingNavigationController(
-            rootViewController: SubscriptionsViewController(
-                service: dependencies.feedService,
-                channelViewControllerFactory:
-                    dependencies.makeChannelViewController
-            )
+            rootViewController:
+                dependencies.makeSubscriptionsViewController()
         )
         subs.tabBarItem = UITabBarItem(
             title: "Subscriptions",

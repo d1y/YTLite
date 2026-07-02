@@ -3,6 +3,9 @@ import Foundation
 struct FeedPage: Codable {
     let videos: [Video]
     let continuation: String?
+    /// Subscribed channels found in the page (TV subscriptions
+    /// responses include a channel row). Nil for other feeds.
+    var channels: [SubscribedChannel]?
 }
 
 // MARK: - ISP-compliant service protocols
@@ -173,6 +176,12 @@ protocol EngagementService: AnyObject {
     )
 }
 
+protocol SubscribedChannelsService: AnyObject {
+    func fetchSubscribedChannels(
+        completion: @escaping (Result<[SubscribedChannel], Error>) -> Void
+    )
+}
+
 protocol AccountService: AnyObject {
     func fetchAccountInfo(
         completion: @escaping (
@@ -186,6 +195,7 @@ typealias VideoService =
     FeedService & HistoryService & SearchService
     & PlaylistService & ChannelService & WatchService
     & EngagementService & AccountService
+    & SubscribedChannelsService
 
 // MARK: - Default parameter convenience extensions
 

@@ -1,10 +1,5 @@
 import UIKit
 
-private enum ChannelTabRequest {
-    static let videos = "EgZ2aWRlb3PyBgQKAjoA"
-    static let live = "EgdzdHJlYW1z8gYECgJ6AA=="
-}
-
 extension ChannelViewController {
     func installTabsView() {
         guard let cv = collectionView else {
@@ -50,9 +45,9 @@ extension ChannelViewController {
         beginTabLoad()
         switch currentTab {
         case .videos:
-            loadVideoTab(params: ChannelTabRequest.videos)
+            loadVideoTab(params: ChannelTabParams.videos)
         case .live:
-            loadVideoTab(params: ChannelTabRequest.live)
+            loadVideoTab(params: ChannelTabParams.live)
         case .playlists:
             loadPlaylistTab()
         }

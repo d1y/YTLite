@@ -9,9 +9,11 @@ enum LikeStatus: String, Codable {
 struct Video: Codable {
     let id: String
     let title: String
-    let channelId: String?
-    let channelName: String
-    let channelAvatarURL: String?
+    // Channel fields are vars so copies can be enriched in place
+    // (e.g. channel-tab videos missing owner metadata).
+    var channelId: String?
+    var channelName: String
+    var channelAvatarURL: String?
     let thumbnailURL: String
     let viewCount: String?
     let publishedAt: String?

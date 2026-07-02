@@ -11,7 +11,15 @@ extension InnertubeClient {
         if let slr = extractSectionList(
             from: json
         ) {
-            return parseSectionList(slr)
+            var page = parseSectionList(slr)
+            let channels = subscribedChannels(in: json)
+            if !channels.isEmpty {
+                page.channels = channels
+                AppLog.innertube(
+                    "parsePageJSON: \(channels.count) channels in page"
+                )
+            }
+            return page
         }
         let keys = (json["contents"]
             as? [String: Any])?

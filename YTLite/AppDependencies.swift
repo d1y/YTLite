@@ -6,9 +6,11 @@ struct AppDependencies {
     let playlistService: PlaylistService
     let searchService: SearchService
     let channelService: ChannelService
+    let channelTabService: ChannelTabService
     let watchService: WatchService
     let engagementService: EngagementService
     let accountService: AccountService
+    let subscribedChannelsService: SubscribedChannelsService
 
     static func live() -> AppDependencies {
         AppDependencies(
@@ -17,9 +19,11 @@ struct AppDependencies {
             playlistService: ServiceContainer.playlists,
             searchService: ServiceContainer.search,
             channelService: ServiceContainer.channel,
+            channelTabService: ServiceContainer.channelTabs,
             watchService: ServiceContainer.watch,
             engagementService: ServiceContainer.engagement,
-            accountService: ServiceContainer.account
+            accountService: ServiceContainer.account,
+            subscribedChannelsService: ServiceContainer.subscribedChannels
         )
     }
 
@@ -38,6 +42,10 @@ struct AppDependencies {
             channelInfoStore: .shared,
             channelViewControllerFactory: makeChannelViewController
         )
+    }
+
+    func makeSubscriptionsViewController() -> SubscriptionsViewController {
+        SubscriptionsViewController(dependencies: self)
     }
 
     func makeChannelViewController(

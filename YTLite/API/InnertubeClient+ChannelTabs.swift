@@ -1,6 +1,8 @@
 import Foundation
 
 enum ChannelTabParams {
+    static let videos    = "EgZ2aWRlb3PyBgQKAjoA"
+    static let live      = "EgdzdHJlYW1z8gYECgJ6AA=="
     static let playlists = "EglwbGF5bGlzdHPyBgQKAkIA"
 }
 

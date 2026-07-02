@@ -38,6 +38,7 @@ final class AppCache {
     let diskQueue = DispatchQueue(label: "com.verback.YTLite.AppCache.disk")
     var homeFeed: FeedPage?
     var subscriptionsFeed: FeedPage?
+    var subscribedChannels: [SubscribedChannel]?
     var historyFeed: FeedPage?
     private var watchPages: [String: TimedWatchPage] = [:]
     private var channelPages: [String: ChannelPage] = [:]
