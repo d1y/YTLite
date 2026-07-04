@@ -10,6 +10,7 @@ final class SettingsViewController: UIViewController {
         case clearCache, rydEnabled
         case sponsorBlockEnabled, sponsorBlockSettings
         case playbackSource
+        case solverEndpoint
         case shareLog
     }
     private struct Section {
@@ -57,8 +58,11 @@ final class SettingsViewController: UIViewController {
                 header: "Debug",
                 footer: "Force a specific playback source."
                     + " Normally Android VR is used"
-                    + " with automatic fallback.",
-                rows: [.playbackSource, .shareLog]
+                    + " with automatic fallback."
+                    + " The remote solver enables WebView HLS"
+                    + " on iOS 12–13, where the throttling"
+                    + " signature can't be solved on-device.",
+                rows: [.playbackSource, .solverEndpoint, .shareLog]
             ),
             Section(header: nil, footer: appVersionFooter, rows: [])
         ]
@@ -69,6 +73,16 @@ final class SettingsViewController: UIViewController {
         let version = info?["CFBundleShortVersionString"] as? String ?? "?"
         let build = info?["CFBundleVersion"] as? String ?? "?"
         return "YTLite v\(version) (\(build))"
+    }
+
+    private var solverEndpointDisplay: String {
+        let value = UserDefaults.standard.string(
+            forKey: UserDefaultsKeys.Debug.solverEndpoint
+        )
+        guard let value, !value.isEmpty else {
+            return "Not set"
+        }
+        return value
     }
 
     override func viewDidLoad() {
@@ -200,12 +214,21 @@ extension SettingsViewController: UITableViewDataSource, UITableViewDelegate {
                 "Playback Source",
                 value: PlaybackSource.selected.displayName
             )
+        case .solverEndpoint:
+            return makeDisclosureCell(
+                "Remote Solver",
+                value: solverEndpointDisplay
+            )
         }
     }
 
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         tableView.deselectRow(at: indexPath, animated: true)
-        switch sections[indexPath.section].rows[indexPath.row] {
+        let row = sections[indexPath.section].rows[indexPath.row]
+        if handleDebugSelection(row) {
+            return
+        }
+        switch row {
         case .quality:
             showQualityPicker()
         case .feedCacheDays:
@@ -216,13 +239,23 @@ extension SettingsViewController: UITableViewDataSource, UITableViewDelegate {
             clearCache()
         case .sponsorBlockSettings:
             showSponsorBlockSettings()
+        default:
+            break
+        }
+    }
+
+    private func handleDebugSelection(_ row: Row) -> Bool {
+        switch row {
         case .shareLog:
             shareDebugLog()
         case .playbackSource:
             showPlaybackSourcePicker()
+        case .solverEndpoint:
+            showSolverEndpointPicker()
         default:
-            break
+            return false
         }
+        return true
     }
 
     private func makeShowShortsCell() -> UITableViewCell {
@@ -390,6 +423,44 @@ extension SettingsViewController: UITableViewDataSource, UITableViewDelegate {
         )
         configureCenteredPopover(sheet)
         present(sheet, animated: true)
+    }
+
+    private func showSolverEndpointPicker() {
+        let alert = UIAlertController(
+            title: "Remote Solver",
+            message: "Full /solve URL of the deployed solver-server."
+                + " Leave empty to disable.",
+            preferredStyle: .alert
+        )
+        let current = UserDefaults.standard.string(
+            forKey: UserDefaultsKeys.Debug.solverEndpoint
+        )
+        alert.addTextField { field in
+            field.placeholder = "https://host:port/solve"
+            field.text = current
+            field.keyboardType = .URL
+            field.autocapitalizationType = .none
+            field.autocorrectionType = .no
+        }
+        alert.addAction(
+            UIAlertAction(title: "Save", style: .default) { [weak self, weak alert] _ in
+                self?.saveSolverEndpoint(alert?.textFields?.first?.text)
+            }
+        )
+        alert.addAction(
+            UIAlertAction(title: "Cancel", style: .cancel)
+        )
+        present(alert, animated: true)
+    }
+
+    private func saveSolverEndpoint(_ text: String?) {
+        let trimmed = (text ?? "")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        UserDefaults.standard.set(
+            trimmed,
+            forKey: UserDefaultsKeys.Debug.solverEndpoint
+        )
+        tableView.reloadData()
     }
 
     private func showImageCacheDaysPicker() {
