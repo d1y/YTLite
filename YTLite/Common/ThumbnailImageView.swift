@@ -15,7 +15,7 @@ class ThumbnailImageView: UIImageView {
     var maxPixelSize: Int = 640
 
     private var currentURL: URL?
-    private var task: URLSessionDataTask?
+    private var loadToken: CancellationToken?
 
     override init(frame: CGRect) {
         super.init(frame: frame)
@@ -42,18 +42,18 @@ class ThumbnailImageView: UIImageView {
 
     func setImage(url: URL) {
         if currentURL == url,
-           image != nil || task != nil {
+           image != nil || loadToken != nil {
             return
         }
-        task?.cancel()
-        task = nil
+        loadToken?.cancel()
+        loadToken = nil
         currentURL = url
         loadFromMemoryOrDisk(url: url)
     }
 
     func cancel() {
-        task?.cancel()
-        task = nil
+        loadToken?.cancel()
+        loadToken = nil
         currentURL = nil
         image = nil
     }
@@ -65,7 +65,7 @@ class ThumbnailImageView: UIImageView {
         ) {
             AppLog.img("mem-hit \(url.lastPathComponent)")
             image = cached
-            task = nil
+            loadToken = nil
             return
         }
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
@@ -119,7 +119,7 @@ class ThumbnailImageView: UIImageView {
             guard self?.currentURL == url else {
                 return
             }
-            self?.task = nil
+            self?.loadToken = nil
             self?.image = img
         }
     }
@@ -139,18 +139,19 @@ class ThumbnailImageView: UIImageView {
     ) {
         AppLog.img("fetch \(url.lastPathComponent)")
         let maxSz = maxPixelSize
-        let task = URLSession.shared.dataTask(
-            with: url
-        ) { [weak self] data, _, _ in
+        let token = CancellationToken()
+        loadToken = token
+        ServiceContainer.mediaTransport.send(
+            HTTPRequest(method: .get, url: url),
+            cancellationToken: token
+        ) { [weak self] result in
             self?.handleNetworkResponse(
-                data: data,
+                data: try? result.get().data,
                 url: url,
                 cacheKey: cacheKey,
                 maxPixelSize: maxSz
             )
         }
-        self.task = task
-        task.resume()
     }
 
     private func handleNetworkResponse(
@@ -179,7 +180,7 @@ class ThumbnailImageView: UIImageView {
             guard self?.currentURL == url else {
                 return
             }
-            self?.task = nil
+            self?.loadToken = nil
         }
     }
 

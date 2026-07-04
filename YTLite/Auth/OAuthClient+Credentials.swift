@@ -7,18 +7,14 @@ extension OAuthClient {
         guard let url = URL(string: AppURLs.YouTube.tv) else {
             return
         }
-        var request = URLRequest(url: url)
-        request.setValue(
-            UserAgent.cobaltTV,
-            forHTTPHeaderField: HTTPHeader.userAgent
-        )
-        request.setValue(
-            AppURLs.YouTube.tv,
-            forHTTPHeaderField: HTTPHeader.referer
-        )
-        request.setValue(
-            "en-US",
-            forHTTPHeaderField: HTTPHeader.acceptLanguage
+        let request = HTTPRequest(
+            method: .get,
+            url: url,
+            headers: [
+                HTTPHeader.userAgent: UserAgent.cobaltTV,
+                HTTPHeader.referer: AppURLs.YouTube.tv,
+                HTTPHeader.acceptLanguage: "en-US"
+            ]
         )
         performRequest(request) { result in
             switch result {
@@ -53,7 +49,7 @@ extension OAuthClient {
             completion(.failure(APIError.decodingFailed))
             return
         }
-        performRequest(URLRequest(url: jsURL)) { result in
+        performRequest(HTTPRequest(method: .get, url: jsURL)) { result in
             switch result {
             case .failure(let error):
                 completion(.failure(error))

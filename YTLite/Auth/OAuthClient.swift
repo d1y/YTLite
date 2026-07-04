@@ -38,7 +38,11 @@ final class OAuthClient {
             )
         }
     }
-    private init() {
+    /// A RAW transport (no AuthorizingTransport) — OAuth's own token requests
+    /// must never trigger the 401-refresh cross-cut, which would recurse.
+    private let transport: HTTPTransport
+    private init(transport: HTTPTransport = URLSessionTransport()) {
+        self.transport = transport
         tokens = loadFromKeychain()
     }
 }
@@ -61,39 +65,31 @@ extension OAuthClient {
     func makePostRequest(
         urlString: String,
         body: [String: Any]
-    ) -> URLRequest? {
+    ) -> HTTPRequest? {
         guard let url = URL(string: urlString) else {
             return nil
         }
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.setValue(
-            HTTPHeaderValue.contentTypeJSON,
-            forHTTPHeaderField: HTTPHeader.contentType
+        return HTTPRequest(
+            method: .post,
+            url: url,
+            headers: [HTTPHeader.contentType: HTTPHeaderValue.contentTypeJSON],
+            body: try? JSONSerialization.data(withJSONObject: body)
         )
-        request.httpBody = try? JSONSerialization.data(
-            withJSONObject: body
-        )
-        return request
     }
     func performRequest(
-        _ request: URLRequest,
+        _ request: HTTPRequest,
         completion: @escaping (Result<Data, Error>) -> Void
     ) {
-        let task = URLSession.shared.dataTask(
-            with: request
-        ) { data, _, error in
-            if let error {
+        // OAuth endpoints return meaningful bodies on non-2xx (e.g. the polling
+        // "authorization_pending" 4xx), so the body is surfaced for any status.
+        transport.send(request, cancellationToken: nil) { result in
+            switch result {
+            case .failure(let error):
                 completion(.failure(error))
-                return
+            case .success(let response):
+                completion(.success(response.data))
             }
-            guard let data else {
-                completion(.failure(APIError.decodingFailed))
-                return
-            }
-            completion(.success(data))
         }
-        task.resume()
     }
 }
 

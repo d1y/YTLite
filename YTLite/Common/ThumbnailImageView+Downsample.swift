@@ -82,10 +82,11 @@ extension ThumbnailImageView {
         url: URL,
         key: String
     ) {
-        let task = URLSession.shared.dataTask(
-            with: url
-        ) { data, _, _ in
-            guard let data else {
+        ServiceContainer.mediaTransport.send(
+            HTTPRequest(method: .get, url: url),
+            cancellationToken: nil
+        ) { result in
+            guard let data = try? result.get().data else {
                 return
             }
             if let img = downsample(data: data, to: 640) {
@@ -99,7 +100,6 @@ extension ThumbnailImageView {
                 diskCache.store(data: data, for: url)
             }
         }
-        task.resume()
     }
 
     private static func makeThumbnail(
