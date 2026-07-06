@@ -80,7 +80,9 @@ final class SettingsViewController: UIViewController {
             forKey: UserDefaultsKeys.Debug.solverEndpoint
         )
         guard let value, !value.isEmpty else {
-            return "Not set"
+            return AppURLs.NSolver.defaultEndpoint.isEmpty
+                ? "Not set"
+                : "Default"
         }
         return value
     }
@@ -429,7 +431,7 @@ extension SettingsViewController: UITableViewDataSource, UITableViewDelegate {
         let alert = UIAlertController(
             title: "Remote Solver",
             message: "Full /solve URL of the deployed solver-server."
-                + " Leave empty to disable.",
+                + " Leave empty to use the built-in default.",
             preferredStyle: .alert
         )
         let current = UserDefaults.standard.string(

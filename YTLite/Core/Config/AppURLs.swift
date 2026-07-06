@@ -24,7 +24,8 @@ enum AppURLs {
     /// `/solve` URL. Empty = disabled (older devices fall back to no HLS).
     /// A runtime override can be set under `UserDefaultsKeys.Debug.solverEndpoint`.
     enum NSolver {
-        static let defaultEndpoint = ""
+        static let defaultEndpoint =
+            "https://potoken-solver-buaphfh0f5gefqfm.canadacentral-01.azurewebsites.net/api/solve"
 
         static var endpoint: URL? {
             let override = UserDefaults.standard.string(
