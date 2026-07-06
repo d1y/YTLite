@@ -173,32 +173,29 @@ extension WatchViewController {
     func makeMinimizeButton() -> UIBarButtonItem {
         makeChevronButton(
             systemName: "chevron.down",
-            fallbackTitle: "⌄"
+            fallback: .minimize
         )
     }
 
     func makeBackButton() -> UIBarButtonItem {
         makeChevronButton(
             systemName: "chevron.left",
-            fallbackTitle: "‹"
+            fallback: .back
         )
     }
 
+    /// One chevron style everywhere: the same glyph the global back
+    /// indicator uses on iOS 13+, and a drawn look-alike on iOS 12.
     private func makeChevronButton(
         systemName: String,
-        fallbackTitle: String
+        fallback: PlayerIcons.NavChevron
     ) -> UIBarButtonItem {
-        guard #available(iOS 13.0, *) else {
-            return makeTextBarButton(title: fallbackTitle)
+        let img: UIImage?
+        if #available(iOS 13.0, *) {
+            img = ThemeManager.navChevron(systemName: systemName)
+        } else {
+            img = PlayerIcons.navChevron(fallback)
         }
-        // Match the system back indicator's glyph size — a bar item image
-        // renders the symbol at body size (~17pt) otherwise, looking smaller
-        // than the back chevron on every other screen.
-        let cfg = UIImage.SymbolConfiguration(pointSize: 21, weight: .semibold)
-        let img = UIImage(
-            systemName: systemName,
-            withConfiguration: cfg
-        )
         let item = UIBarButtonItem(
             image: img,
             style: .plain,
@@ -209,21 +206,6 @@ extension WatchViewController {
         // system back indicator used on every other screen; shift to match.
         item.imageInsets = UIEdgeInsets(top: 0, left: -8, bottom: 0, right: 8)
         return item
-    }
-
-    private func makeTextBarButton(
-        title: String
-    ) -> UIBarButtonItem {
-        let btn = UIButton(type: .system)
-        btn.setTitle(title, for: .normal)
-        btn.titleLabel?.font = .systemFont(ofSize: 26, weight: .semibold)
-        btn.sizeToFit()
-        btn.addTarget(
-            self,
-            action: #selector(closeTapped),
-            for: .touchUpInside
-        )
-        return UIBarButtonItem(customView: btn)
     }
 
     func exitFullscreenIfNeeded() {

@@ -62,6 +62,14 @@ class ThemeManager {
         rebuildCache()
     }
 
+    /// The one nav-chevron style used everywhere: the global back indicator
+    /// and the watch screen's custom back/minimize buttons.
+    @available(iOS 13.0, *)
+    static func navChevron(systemName: String) -> UIImage? {
+        let cfg = UIImage.SymbolConfiguration(pointSize: 21, weight: .semibold)
+        return UIImage(systemName: systemName, withConfiguration: cfg)
+    }
+
     private func rebuildCache() {
         let dark = isDark
         background    = dark ? .black : UIColor(white: 0.96, alpha: 1)
@@ -88,7 +96,7 @@ class ThemeManager {
         nav.tintColor = isDark ? .white : accent
         nav.titleTextAttributes = [.foregroundColor: primaryText]
         if #available(iOS 13.0, *) {
-            let chevron = UIImage(systemName: "chevron.left")
+            let chevron = Self.navChevron(systemName: "chevron.left")
             nav.backIndicatorImage = chevron
             nav.backIndicatorTransitionMaskImage = chevron
         }

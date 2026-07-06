@@ -229,25 +229,31 @@ extension VideoPlayerView {
         pipController?.delegate = self
     }
 
-    /// The system auto-starts PiP when the app backgrounds while a video
-    /// layer covers the screen. That is wanted only in fullscreen: outside
-    /// it, drop the controller while inactive (unless the user already
-    /// started PiP via the button) and recreate it when active again.
+    /// On backgrounding, the system auto-starts PiP when a video layer
+    /// covers the screen — and pauses the player when it has no PiP
+    /// controller. Auto-PiP is wanted only in fullscreen: everywhere else,
+    /// detach the layer while inactive so iOS neither starts PiP nor
+    /// pauses (audio keeps running); the layer comes back on activation.
     @objc
     func appWillResignActive() {
         guard pipController?.isPictureInPictureActive != true else {
             return
         }
-        if !isFullscreen {
-            pipController = nil
+        if !isFullscreen || pipController == nil {
+            playerLayer.player = nil
         }
     }
 
     @objc
     func appDidBecomeActive() {
-        if player != nil {
-            setupPiP()
+        guard let player else {
+            return
         }
+        if playerLayer.player == nil {
+            playerLayer.player = player
+        }
+        // Re-evaluate the PiP setting (it may have changed in Settings).
+        setupPiP()
     }
 
     @objc
