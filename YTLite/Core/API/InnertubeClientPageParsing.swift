@@ -58,19 +58,10 @@ extension InnertubeClient {
             forKey: UserDefaultsKeys.Feed.showShorts
         )
         for section in sections {
-            guard let shelf = section[
-                "shelfRenderer"
-            ] as? [String: Any],
-                  let sc = shelf["content"]
-                    as? [String: Any]
-            else {
-                continue
-            }
-            if !showShorts && isShortsShelf(shelf) {
-                continue
-            }
-            appendShelfVideos(
-                from: sc, into: &videos
+            appendSection(
+                section,
+                showShorts: showShorts,
+                into: &videos
             )
         }
         return FeedPage(
@@ -170,8 +161,16 @@ private extension InnertubeClient {
             "tvSecondaryNavSectionRenderer"
         ] as? [String: Any]
         let tabs = nr?["tabs"]
-            as? [[String: Any]]
-        let tr = tabs?.first?["tabRenderer"]
+            as? [[String: Any]] ?? []
+        let titles = tabs.map {
+            ($0["tabRenderer"] as? [String: Any])?
+                .runsText("title") ?? "?"
+        }
+        AppLog.innertube(
+            "subscriptions nav: \(tabs.count) tabs"
+                + " [\(titles.joined(separator: " | "))]"
+        )
+        let tr = tabs.first?["tabRenderer"]
             as? [String: Any]
         let tc = tr?["content"] as? [String: Any]
         let surface = tc?[
@@ -181,6 +180,51 @@ private extension InnertubeClient {
             as? [String: Any])?[
                 "sectionListRenderer"
             ] as? [String: Any]
+    }
+
+    static func appendSection(
+        _ section: [String: Any],
+        showShorts: Bool,
+        into videos: inout [Video]
+    ) {
+        guard let shelf = section["shelfRenderer"]
+            as? [String: Any],
+            let sc = shelf["content"] as? [String: Any]
+        else {
+            AppLog.innertube(
+                "sectionList: skipping section"
+                    + " keys=\(section.keys.sorted())"
+            )
+            return
+        }
+        if !showShorts && isShortsShelf(shelf) {
+            return
+        }
+        let before = videos.count
+        appendShelfVideos(from: sc, into: &videos)
+        AppLog.innertube(
+            "shelf '\(shelfTitle(shelf) ?? "?")':"
+                + " +\(videos.count - before) videos"
+                + " (contentKeys=\(sc.keys.sorted()))"
+        )
+    }
+
+    static func shelfTitle(
+        _ shelf: [String: Any]
+    ) -> String? {
+        if let title = shelf.runsText("title") {
+            return title
+        }
+        let header = shelf.digDict(
+            "headerRenderer", "shelfHeaderRenderer"
+        )
+        if let title = header?.runsText("title") {
+            return title
+        }
+        let lockup = header?.digDict(
+            "avatarLockup", "avatarLockupRenderer"
+        )
+        return lockup?.runsText("title")
     }
 
     static func isShortsShelf(
