@@ -332,7 +332,12 @@ extension WatchViewController {
         dismissAutoplayOverlay()
         pageLoadToken.cancel()
         pageLoadToken = CancellationToken()
-        resetPlaybackSurfaces()
+        let isBg = UIApplication.shared.applicationState != .active
+        if isBg {
+            savedPlayerForBackground = videoPlayerView?.player
+        } else {
+            resetPlaybackSurfaces()
+        }
         playbackFacade.reset()
         resetVideoState()
         scrollView.setContentOffset(.zero, animated: false)

@@ -71,6 +71,7 @@ final class WatchViewController: UIViewController {
     var captionTracks: [SubtitleTrack] = []
     var activeSubtitleLanguage: String?
     var backgroundEnteredAt: Date?
+    var savedPlayerForBackground: AVPlayer?
     var isRecoveringPlayback = false
     var hasSeenPlaybackError = false
     var recoveryTargetSeconds: Double?

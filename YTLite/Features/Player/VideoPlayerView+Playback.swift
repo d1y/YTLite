@@ -18,6 +18,18 @@ extension VideoPlayerView {
         }
     }
 
+    /// Rebinds observers after the host replaced the item on the SAME
+    /// player (background video-to-video transition): the duration KVO
+    /// watches `currentItem`, so it must re-attach to the new one. The
+    /// layer is deliberately untouched — it stays detached while
+    /// backgrounded and comes back on activation.
+    func rebind(player newPlayer: AVPlayer) {
+        player = newPlayer
+        removePlayerObservers()
+        addPlayerObservers()
+        duration = 0
+    }
+
     func detach() {
         removePeriodicObserver()
         removePlayerObservers()

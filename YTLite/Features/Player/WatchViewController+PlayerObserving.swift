@@ -225,8 +225,17 @@ extension WatchViewController {
             else {
                 return
             }
+            let isActive =
+                UIApplication.shared.applicationState
+                    == .active
             DispatchQueue.main.async { [weak self] in
-                self?.showAutoplayOverlay(for: nextVideo)
+                if isActive {
+                    self?.showAutoplayOverlay(
+                        for: nextVideo
+                    )
+                } else {
+                    self?.navigateTo(nextVideo)
+                }
             }
         }
     }

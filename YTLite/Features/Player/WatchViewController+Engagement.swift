@@ -12,16 +12,10 @@ extension WatchViewController {
             "appDidEnterBackground: bgEnabled=\(bgEnabled)"
         )
         backgroundEnteredAt = Date()
-        guard bgEnabled else {
+        // Layer/PiP background handling lives in VideoPlayerView.
+        if !bgEnabled {
             videoPlayerView?.player?.pause()
-            return
         }
-        let pipActive = videoPlayerView?.pipController?
-            .isPictureInPictureActive == true
-        if pipActive {
-            return
-        }
-        videoPlayerView?.playerLayer.player = nil
     }
 
     @objc

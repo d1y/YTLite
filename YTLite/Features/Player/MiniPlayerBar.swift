@@ -35,8 +35,8 @@ final class MiniPlayerBar: UIView {
         )
         NotificationCenter.default.addObserver(
             self,
-            selector: #selector(appWillResignActive),
-            name: UIApplication.willResignActiveNotification,
+            selector: #selector(appDidEnterBackground),
+            name: UIApplication.didEnterBackgroundNotification,
             object: nil
         )
         NotificationCenter.default.addObserver(
@@ -77,10 +77,11 @@ final class MiniPlayerBar: UIView {
     }
 
     /// iOS pauses a backgrounded player that still drives a layer; detach
-    /// while inactive so background audio keeps running when the panel is
-    /// minimized (the main player view does the same for its own layer).
+    /// on real backgrounding (not on Control Center's resignActive, which
+    /// would hiccup audio) so background audio keeps running when the
+    /// panel is minimized. The main player view does the same.
     @objc
-    private func appWillResignActive() {
+    private func appDidEnterBackground() {
         playerLayer?.player = nil
     }
 

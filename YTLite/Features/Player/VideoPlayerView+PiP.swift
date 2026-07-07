@@ -36,20 +36,42 @@ extension VideoPlayerView {
     }
 
     /// Auto-PiP on backgrounding is wanted only in fullscreen (with the
-    /// setting on) — that case keeps its layer and controller. Everywhere
-    /// else BOTH go away while inactive: a bare layer still gets paused by
-    /// iOS (killing background audio), and a live controller can still be
-    /// picked up for auto-PiP even mid-detach. Recreated on activation.
+    /// setting on) — that case keeps its controller. Everywhere else only
+    /// the controller is dropped here: that alone prevents auto-PiP at the
+    /// transition, and keeping the layer attached means a Control Center /
+    /// Notification Center peek (which fires resignActive but never
+    /// didEnterBackground) doesn't touch the pipeline — no audio hiccup.
     @objc
     func appWillResignActive() {
         guard pipController?.isPictureInPictureActive != true else {
             return
         }
-        if isFullscreen, pipController != nil {
+        wasPlayingOnResign = (player?.rate ?? 0) > 0
+        if !isFullscreen {
+            pipController = nil
+        }
+    }
+
+    /// A real backgrounding: detach the layer (a layer-backed player is
+    /// paused by iOS in the background) and, since without a controller the
+    /// system may have paused playback during the transition, resume on the
+    /// next tick — after every handler (incl. the mini bar's detach) ran.
+    @objc
+    func appDidEnterBackground() {
+        guard pipController?.isPictureInPictureActive != true,
+              BackgroundPlaybackService.isEnabled
+        else {
             return
         }
         playerLayer.player = nil
-        pipController = nil
+        guard wasPlayingOnResign else {
+            return
+        }
+        DispatchQueue.main.async { [weak self] in
+            if let player = self?.player, player.rate == 0 {
+                player.play()
+            }
+        }
     }
 
     @objc

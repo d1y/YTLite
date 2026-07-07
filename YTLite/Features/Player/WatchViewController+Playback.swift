@@ -23,6 +23,13 @@ extension WatchViewController {
         guard !pageLoadToken.isCancelled else {
             return
         }
+        if let saved = savedPlayerForBackground {
+            savedPlayerForBackground = nil
+            attachToExistingPlayer(
+                player: saved, item: item
+            )
+            return
+        }
         resetPlaybackSurfaces()
         playerSpinner.stopAnimating()
         playerStatusLabel.isHidden = true
@@ -37,6 +44,21 @@ extension WatchViewController {
         configureSponsorBlock(on: pv)
         playerContainer.bringSubviewToFront(pv)
         pv.attach(player: player)
+        player.play()
+    }
+
+    private func attachToExistingPlayer(
+        player: AVPlayer,
+        item: AVPlayerItem
+    ) {
+        if let old = player.currentItem {
+            stopObservingPlayerItem(old)
+        }
+        PlaybackBufferPolicy.configure(item: item)
+        startObservingPlayerItem(item)
+        player.replaceCurrentItem(with: item)
+        // The duration KVO binds player.currentItem — rebind after the swap.
+        videoPlayerView?.rebind(player: player)
         player.play()
     }
 

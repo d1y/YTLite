@@ -178,6 +178,7 @@ final class VideoPlayerView: UIView {
     var timeObserver: Any?
     var hideWorkItem: DispatchWorkItem?
     var controlsVisible = false
+    var wasPlayingOnResign = false
     var duration: Double = 0
     var rateObservation: NSKeyValueObservation?
     var statusObservation: NSKeyValueObservation?
