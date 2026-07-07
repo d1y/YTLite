@@ -45,6 +45,11 @@ enum UserDefaultsKeys {
         static let pipEnabled = "player_pipEnabled"
     }
 
+    enum Innertube {
+        static let visitorData = "innertube_visitorData"
+        static let visitorDataDate = "innertube_visitorDataDate"
+    }
+
     enum Debug {
         static let playbackSource = "debug_playbackSource"
         static let solverEndpoint = "debug_solverEndpoint"

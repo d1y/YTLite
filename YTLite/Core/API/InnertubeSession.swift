@@ -10,6 +10,8 @@ import Foundation
 // not store raw strings or inline context dictionaries.
 
 final class InnertubeSession {
+    private static let visitorDataTTL: TimeInterval = 24 * 60 * 60
+
     // MARK: - Endpoints
 
     let baseURL: String = AppURLs.YouTube.innertube
@@ -27,7 +29,31 @@ final class InnertubeSession {
     // nil = not yet known (requests still work; YouTube returns defaults).
 
     /// Visitor data from the initial page response (`visitorData` field).
-    var visitorData: String?
+    /// Persisted with a TTL so the first video of a session doesn't pay the
+    /// ~1s watch-page preflight; the cookies it pairs with live in
+    /// `HTTPCookieStorage`, which iOS persists across launches as well.
+    var visitorData: String? {
+        get {
+            let defaults = UserDefaults.standard
+            guard
+                let value = defaults.string(
+                    forKey: UserDefaultsKeys.Innertube.visitorData
+                ),
+                let stamp = defaults.object(
+                    forKey: UserDefaultsKeys.Innertube.visitorDataDate
+                ) as? Date,
+                Date().timeIntervalSince(stamp) < Self.visitorDataTTL
+            else {
+                return nil
+            }
+            return value
+        }
+        set {
+            let defaults = UserDefaults.standard
+            defaults.set(newValue, forKey: UserDefaultsKeys.Innertube.visitorData)
+            defaults.set(Date(), forKey: UserDefaultsKeys.Innertube.visitorDataDate)
+        }
+    }
 
     /// Player signature timestamp — required for signed stream URLs.
     /// Extracted from the player JS or `/player` response.

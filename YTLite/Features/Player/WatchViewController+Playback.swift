@@ -44,7 +44,9 @@ extension WatchViewController {
         configureSponsorBlock(on: pv)
         playerContainer.bringSubviewToFront(pv)
         pv.attach(player: player)
-        player.play()
+        // Start as soon as the first frames are decodable instead of
+        // waiting for the stall-minimizing buffer to fill.
+        player.playImmediately(atRate: pv.playbackSpeed)
     }
 
     private func attachToExistingPlayer(
