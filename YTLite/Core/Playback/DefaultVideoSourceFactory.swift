@@ -8,6 +8,12 @@ struct DefaultVideoSourceFactory: VideoSourceFactory {
 
     func make(kind: VideoSourceKind) -> VideoSource {
         switch kind {
+        case .auto:
+            return AutoVideoSource(
+                primary: AndroidVRSource(apiClient: apiClient)
+            ) { [apiClient] in
+                MWebSource(apiClient: apiClient)
+            }
         case .androidVR:
             return AndroidVRSource(apiClient: apiClient)
         case .progressive:

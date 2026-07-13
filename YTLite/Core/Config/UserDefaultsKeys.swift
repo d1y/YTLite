@@ -59,6 +59,7 @@ enum UserDefaultsKeys {
 // MARK: - PlaybackSource
 
 enum PlaybackSource: String, CaseIterable {
+    case auto = "auto"
     case androidVR = "android_vr"
     case progressive = "progressive"
     case mwebPot = "mweb_pot"
@@ -68,13 +69,15 @@ enum PlaybackSource: String, CaseIterable {
             forKey: UserDefaultsKeys.Debug.playbackSource
         )
         return raw.flatMap(PlaybackSource.init)
-            ?? .androidVR
+            ?? .auto
     }
 
     var displayName: String {
         switch self {
+        case .auto:
+            return "Auto (Android VR, mweb fallback)"
         case .androidVR:
-            return "Android VR (default)"
+            return "Android VR (fast)"
         case .progressive:
             return "Progressive (360p)"
         case .mwebPot:
@@ -84,6 +87,8 @@ enum PlaybackSource: String, CaseIterable {
 
     var sourceKind: VideoSourceKind {
         switch self {
+        case .auto:
+            return .auto
         case .androidVR:
             return .androidVR
         case .progressive:

@@ -10,6 +10,9 @@ import Foundation
 
 /// Identifies a source; maps 1:1 from the user-facing `PlaybackSource` setting.
 enum VideoSourceKind {
+    /// Composite strategy: android_vr first, mweb+pot on failure. Only ever a
+    /// factory input — a playing source always reports a concrete kind.
+    case auto
     case androidVR
     case progressive
     case mwebPot
