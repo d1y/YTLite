@@ -212,6 +212,9 @@ extension OAuthClient {
         performRequest(request) { [weak self] result in
             switch result {
             case .failure(let error):
+                AppLog.auth(
+                    "refresh request failed: \(error.localizedDescription)"
+                )
                 completion(.failure(error))
             case .success(let data):
                 self?.handleRefreshResponse(
@@ -229,10 +232,21 @@ extension OAuthClient {
     ) {
         guard let json = try? JSONSerialization.jsonObject(
             with: data
-        ) as? [String: Any],
-              let accessToken = json["access_token"] as? String,
+        ) as? [String: Any]
+        else {
+            let raw = String(data: data, encoding: .utf8) ?? "<non-utf8>"
+            AppLog.auth(
+                "refresh failed: unparseable response: \(raw.prefix(300))"
+            )
+            completion(.failure(APIError.decodingFailed))
+            return
+        }
+        guard let accessToken = json["access_token"] as? String,
               let expiresIn = json["expires_in"] as? Int
         else {
+            let code = json["error"] as? String ?? "unknown"
+            let detail = json["error_description"] as? String ?? ""
+            AppLog.auth("refresh rejected: \(code) \(detail)")
             completion(.failure(APIError.decodingFailed))
             return
         }
