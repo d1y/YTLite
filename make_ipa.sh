@@ -63,10 +63,39 @@ if [ -n "${BUILD_NUMBER:-}" ]; then
   plutil -replace CFBundleVersion -string "$BUILD_NUMBER" "$APP_PATH/Info.plist"
 fi
 
+# When the build runs unsigned (CI: CODE_SIGNING_ALLOWED=NO), Xcode embeds the
+# toolchain's Swift back-deploy dylibs verbatim, keeping their huge bitcode
+# segment; a signed build strips it. No-op when already stripped.
+echo "▶ Stripping bitcode from embedded Swift libraries..."
+for dylib in "$APP_PATH/Frameworks/"*.dylib; do
+  [ -e "$dylib" ] || continue
+  xcrun bitcode_strip -r "$dylib" -o "$dylib"
+done
+
+# Sign with the exact entitlements every published release has carried (from
+# the local dev signature). Keychain items on jailbroken installs are keyed to
+# application-identifier — changing it would log users out on update. CI builds
+# are unsigned and have no entitlements to preserve, hence the explicit file.
 echo "▶ Replacing dev cert with ad-hoc signature..."
-codesign -f -s - --deep --preserve-metadata=entitlements "$APP_PATH" 2>/dev/null \
+ENTITLEMENTS=$(mktemp).plist
+cat > "$ENTITLEMENTS" <<'EOF'
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>application-identifier</key>
+	<string>WD55N799QB.com.verback.YTLite.test</string>
+	<key>com.apple.developer.team-identifier</key>
+	<string>WD55N799QB</string>
+	<key>get-task-allow</key>
+	<true/>
+</dict>
+</plist>
+EOF
+codesign -f -s - --deep --entitlements "$ENTITLEMENTS" "$APP_PATH" 2>/dev/null \
   && echo "  codesign: ok" \
   || echo "  codesign: skipped (app will still install via AppSync)"
+rm -f "$ENTITLEMENTS"
 
 echo "▶ Packaging IPA..."
 TMP=$(mktemp -d)
