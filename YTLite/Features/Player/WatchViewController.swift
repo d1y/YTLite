@@ -155,14 +155,6 @@ final class WatchViewController: UIViewController {
         .allButUpsideDown
     }
 
-    override var prefersStatusBarHidden: Bool {
-        isLandscapeFullscreen
-    }
-
-    override var prefersHomeIndicatorAutoHidden: Bool {
-        isLandscapeFullscreen
-    }
-
     var isPlaylistMode: Bool {
         queue.playlistTitle != nil
     }

@@ -66,6 +66,8 @@ extension WatchViewController: VideoPlayerViewDelegate {
         playerView.frame = frameInWindow
         window.addSubview(playerView)
         playerView.isFullscreen = true
+        setNeedsStatusBarAppearanceUpdate()
+        setNeedsUpdateOfHomeIndicatorAutoHidden()
         UIView.animate(
             withDuration: 0.25,
             delay: 0,
@@ -113,6 +115,8 @@ extension WatchViewController: VideoPlayerViewDelegate {
         playerView.isFullscreen = false
         isLandscapeFullscreen = false
         fullscreenSnapshot = nil
+        setNeedsStatusBarAppearanceUpdate()
+        setNeedsUpdateOfHomeIndicatorAutoHidden()
         updateLayoutForSize()
     }
 
@@ -131,6 +135,37 @@ extension WatchViewController: VideoPlayerViewDelegate {
             width: 1,
             height: 1
         )
+    }
+}
+
+// MARK: - Status bar / home indicator
+
+extension WatchViewController {
+    static var hidesStatusBarInFullscreen: Bool {
+        UserDefaults.standard.object(
+            forKey: UserDefaultsKeys.Player.hideStatusBarInFullscreen
+        ) as? Bool ?? true
+    }
+
+    /// Fullscreen via either path — iPhone transform-based landscape or the
+    /// iPad window-fill (`enterFullscreen`).
+    var isPlayerFullscreen: Bool {
+        isLandscapeFullscreen || videoPlayerView?.isFullscreen == true
+    }
+
+    override var prefersStatusBarHidden: Bool {
+        isPlayerFullscreen && Self.hidesStatusBarInFullscreen
+    }
+
+    /// Over fullscreen video the bar must be light regardless of theme —
+    /// `.default` is black-on-black there (looks "hidden", except a charging
+    /// battery icon).
+    override var preferredStatusBarStyle: UIStatusBarStyle {
+        isPlayerFullscreen ? .lightContent : ThemeManager.shared.statusBarStyle
+    }
+
+    override var prefersHomeIndicatorAutoHidden: Bool {
+        isPlayerFullscreen
     }
 }
 

@@ -10,6 +10,10 @@ class MainTabBarController: UITabBarController {
         playerPanel ?? selectedViewController
     }
 
+    override var childForStatusBarStyle: UIViewController? {
+        playerPanel ?? selectedViewController
+    }
+
     override var childForHomeIndicatorAutoHidden: UIViewController? {
         playerPanel ?? selectedViewController
     }

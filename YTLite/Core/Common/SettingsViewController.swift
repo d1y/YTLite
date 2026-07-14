@@ -4,7 +4,7 @@ import UIKit
 /// Settings popup presented as a sheet from the toolbar.
 final class SettingsViewController: UIViewController {
     private enum Row {
-        case theme, quality, backgroundPlayback, pipEnabled, showShorts
+        case theme, quality, backgroundPlayback, pipEnabled, hideStatusBar, showShorts
         case persistCache, feedCacheDays
         case imageCacheEnabled, imageCacheDays
         case clearCache, rydEnabled
@@ -49,7 +49,10 @@ final class SettingsViewController: UIViewController {
             Section(
                 header: "Playback",
                 footer: nil,
-                rows: [.quality, .backgroundPlayback, .pipEnabled, .showShorts]
+                rows: [
+                    .quality, .backgroundPlayback, .pipEnabled,
+                    .hideStatusBar, .showShorts
+                ]
             ),
             Section(header: "Cache", footer: nil, rows: cacheRows),
             Section(header: "Return YouTube Dislike", footer: rydFooter, rows: [.rydEnabled]),
@@ -158,6 +161,12 @@ extension SettingsViewController: UITableViewDataSource, UITableViewDelegate {
             let key = UserDefaultsKeys.Player.pipEnabled
             let isOn = UserDefaults.standard.object(forKey: key) as? Bool ?? true
             return makeToggleCell("Picture-in-Picture", isOn: isOn) {
+                UserDefaults.standard.set($0, forKey: key)
+            }
+        case .hideStatusBar:
+            let key = UserDefaultsKeys.Player.hideStatusBarInFullscreen
+            let isOn = UserDefaults.standard.object(forKey: key) as? Bool ?? true
+            return makeToggleCell("Hide Status Bar in Fullscreen", isOn: isOn) {
                 UserDefaults.standard.set($0, forKey: key)
             }
         case .showShorts:

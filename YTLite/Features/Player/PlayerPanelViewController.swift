@@ -323,6 +323,12 @@ extension PlayerPanelViewController {
         navigationWrapper
     }
 
+    /// Style goes straight to the watch screen (skipping the nav controller,
+    /// which would derive it from its bar style instead of the video state).
+    override var childForStatusBarStyle: UIViewController? {
+        navigationWrapper.topViewController
+    }
+
     override var childForHomeIndicatorAutoHidden: UIViewController? {
         navigationWrapper
     }
