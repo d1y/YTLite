@@ -21,6 +21,8 @@ final class PlayerPanelViewController: UIViewController, UIGestureRecognizerDele
         }
     }
     var onClose: (() -> Void)?
+    /// Notifies host when expanded/collapsed so shell chrome can hide/show.
+    var onExpandedChange: ((Bool) -> Void)?
 
     init(watchVC: WatchViewController) {
         self.watchVC = watchVC
@@ -55,6 +57,7 @@ final class PlayerPanelViewController: UIViewController, UIGestureRecognizerDele
 
     func expand(animated: Bool) {
         isExpanded = true
+        onExpandedChange?(true)
         refreshMiniBar()
         let animations = {
             self.view.transform = .identity
@@ -66,10 +69,8 @@ final class PlayerPanelViewController: UIViewController, UIGestureRecognizerDele
         }
         if animated {
             miniBar?.isHidden = false
-            UIView.animate(
-                withDuration: 0.25,
-                delay: 0,
-                options: [.curveEaseOut],
+            MotionStyle.animateChrome(
+                duration: MotionStyle.panelDuration,
                 animations: animations,
                 completion: completion
             )
@@ -81,6 +82,7 @@ final class PlayerPanelViewController: UIViewController, UIGestureRecognizerDele
 
     func collapse(animated: Bool) {
         isExpanded = false
+        onExpandedChange?(false)
         refreshMiniBar()
         miniBar?.transform = .identity
         miniBar?.alpha = 0
@@ -90,10 +92,8 @@ final class PlayerPanelViewController: UIViewController, UIGestureRecognizerDele
             self.miniBar?.alpha = 1
         }
         if animated {
-            UIView.animate(
-                withDuration: 0.25,
-                delay: 0,
-                options: [.curveEaseOut],
+            MotionStyle.animateChrome(
+                duration: MotionStyle.panelDuration,
                 animations: animations,
                 completion: nil
             )
@@ -143,9 +143,19 @@ private extension PlayerPanelViewController {
         guard let window = view.window else {
             return
         }
+        // macOS / Catalyst: unified title bar already owns the top chrome.
+        // Pushing nav down by safeAreaInsets.top creates the black strip under
+        // the traffic lights — content should go edge-to-edge under the titlebar.
+        if PlatformStyle.isMac {
+            navWrapperTopConstraint?.constant = 0
+            statusBarBackdrop.isHidden = true
+            statusBarBackdrop.backgroundColor = .clear
+            return
+        }
         let top = window.safeAreaInsets.top
         navWrapperTopConstraint?.constant = top
-        statusBarBackdrop.backgroundColor = ThemeManager.shared.surface
+        statusBarBackdrop.isHidden = false
+        statusBarBackdrop.backgroundColor = ThemeManager.shared.background
     }
 
     func installNavigationWrapper() {

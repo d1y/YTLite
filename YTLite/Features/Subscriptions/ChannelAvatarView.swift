@@ -18,7 +18,9 @@ final class ChannelAvatarView: UIView {
 
     override func layoutSubviews() {
         super.layoutSubviews()
-        layer.cornerRadius = bounds.width / 2
+        let side = min(bounds.width, bounds.height)
+        CircleAvatarStyle.apply(to: self, side: side)
+        CircleAvatarStyle.apply(to: imageView, side: side)
     }
 
     func configure(with channel: SubscribedChannel) {

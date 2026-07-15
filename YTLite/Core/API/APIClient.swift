@@ -90,3 +90,30 @@ enum APIError: Error {
         }
     }
 }
+
+extension APIError: LocalizedError {
+    var errorDescription: String? {
+        switch self {
+        case .noData:
+            return "No data received from the server."
+        case .invalidURL:
+            return "Invalid URL."
+        case .invalidResponse:
+            return "Unexpected response from the server."
+        case .decodingFailed:
+            return "Could not parse the server response."
+        case .notReady:
+            return "Not ready yet. Try again."
+        case .unauthorized:
+            return "Authorization required. Please sign in again."
+        case .forbidden:
+            return "Access denied by the server."
+        case .rateLimited:
+            return "Too many requests. Wait a moment and try again."
+        case .serverError(let code):
+            return "Server error (\(code)). Try again later."
+        case .transport(let error):
+            return "Network error: \(NetworkSessionFactory.describe(error))"
+        }
+    }
+}

@@ -36,12 +36,22 @@ final class SplashViewController: UIViewController {
     // MARK: - Animation
 
     private func animateAndComplete() {
-        UIView.animate(withDuration: 0.25, delay: 0, options: .curveEaseOut) {
+        // Skills: enter from scale 0.95 + opacity (never scale 0); ease-out.
+        logoView.transform = CGAffineTransform(
+            scaleX: MotionStyle.enterScale,
+            y: MotionStyle.enterScale
+        )
+        MotionStyle.animateChrome(duration: MotionStyle.chromeDuration) {
             self.logoView.alpha = 1
+            self.logoView.transform = .identity
         } completion: { _ in
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                UIView.animate(withDuration: 0.25) {
+                MotionStyle.animateChrome(duration: MotionStyle.chromeDuration) {
                     self.logoView.alpha = 0
+                    self.logoView.transform = CGAffineTransform(
+                        scaleX: MotionStyle.enterScale,
+                        y: MotionStyle.enterScale
+                    )
                 } completion: { _ in
                     self.onComplete?()
                 }

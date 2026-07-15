@@ -86,10 +86,17 @@ extension WatchViewController {
         commentsStack cs: UIStackView,
         loadMoreButton lb: UIButton
     ) {
+        // Cap action-bar width on ultra-wide Mac so like/share icons stay
+        // grouped (fillEqually across 1400pt looks sparse / broken).
+        let actionWidthCap = ab.widthAnchor.constraint(lessThanOrEqualToConstant: 520)
+        actionWidthCap.priority = .required
         NSLayoutConstraint.activate([
             ab.topAnchor.constraint(equalTo: channelAvatarView.bottomAnchor, constant: 16),
             ab.leadingAnchor.constraint(equalTo: tl.leadingAnchor),
-            ab.trailingAnchor.constraint(equalTo: tl.trailingAnchor),
+            ab.trailingAnchor.constraint(
+                lessThanOrEqualTo: tl.trailingAnchor
+            ),
+            actionWidthCap,
             ab.heightAnchor.constraint(equalToConstant: 52),
             cl.topAnchor.constraint(equalTo: ab.bottomAnchor, constant: 20),
             cl.leadingAnchor.constraint(equalTo: tl.leadingAnchor),

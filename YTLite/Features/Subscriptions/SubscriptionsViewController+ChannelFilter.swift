@@ -55,7 +55,8 @@ extension SubscriptionsViewController {
         }
         selectedChannel = nil
         channelBar.setSelectedChannelId(nil)
-        title = "Subscriptions"
+        // Back to root feed — no nav title; keep tab label string.
+        RootScreenTitle.clear(on: self, tabTitle: L10n.tr(L10n.Tab.subscriptions))
         navigationItem.leftBarButtonItem = nil
         videos = stashedVideos
         continuationToken = stashedContinuation
@@ -80,7 +81,10 @@ private extension SubscriptionsViewController {
         }
         selectedChannel = channel
         channelBar.setSelectedChannelId(channel.id)
+        // Channel filter: standard centered title + back chevron (not root chrome).
+        navigationItem.leftBarButtonItem = nil
         title = channel.title
+        navigationItem.title = channel.title
         installBackButton()
         isLoadingInitial = true
         isLoadingMore = false

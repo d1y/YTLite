@@ -111,6 +111,7 @@ enum AppLog {
     static func img(_ msg: String) { log("Img", msg) }
     static func channel(_ msg: String) { log("Channel", msg) }
     static func auth(_ msg: String) { log("Auth", msg) }
+    static func network(_ msg: String) { log("Network", msg) }
     static func innertube(_ msg: String) { log("Innertube", msg) }
     static func player(_ msg: String) { log("Player", msg) }
     static func hls(_ msg: String) { log("HLS", msg) }

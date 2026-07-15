@@ -35,21 +35,38 @@ extension VideoPlayerView {
         pipController?.delegate = self
     }
 
-    /// Auto-PiP on backgrounding is wanted only in fullscreen (with the
-    /// setting on) — that case keeps its controller. Everywhere else only
-    /// the controller is dropped here: that alone prevents auto-PiP at the
-    /// transition, and keeping the layer attached means a Control Center /
-    /// Notification Center peek (which fires resignActive but never
-    /// didEnterBackground) doesn't touch the pipeline — no audio hiccup.
+    /// Decision snapshot for auto-PiP / retain-controller rules.
+    func autoPiPState(isPlaying: Bool) -> AutoPiPDecision.State {
+        AutoPiPDecision.makeState(
+            isPiPSupported: AVPictureInPictureController
+                .isPictureInPictureSupported(),
+            isPiPAlreadyActive: pipController?.isPictureInPictureActive == true,
+            isFullscreen: isFullscreen,
+            isPlaying: isPlaying
+        )
+    }
+
+    /// Auto-PiP on backgrounding: when Auto PiP is on, retain the controller
+    /// for any playing video; when off, only fullscreen keeps it (legacy).
+    /// Dropping the controller elsewhere prevents accidental system auto-PiP
+    /// while still allowing background audio after layer detach.
     @objc
     func appWillResignActive() {
         guard pipController?.isPictureInPictureActive != true else {
             return
         }
         wasPlayingOnResign = (player?.rate ?? 0) > 0
-        if !isFullscreen {
-            pipController = nil
+        let state = autoPiPState(isPlaying: wasPlayingOnResign)
+        if AutoPiPDecision.shouldRetainPiPControllerOnResign(state: state) {
+            // Keep controller so we can start PiP or system may hand off.
+            if AutoPiPDecision.shouldAutoStartPiP(state: state),
+               let pip = pipController,
+               pip.isPictureInPicturePossible {
+                pip.startPictureInPicture()
+            }
+            return
         }
+        pipController = nil
     }
 
     /// A real backgrounding: detach the layer (a layer-backed player is
@@ -58,9 +75,19 @@ extension VideoPlayerView {
     /// next tick — after every handler (incl. the mini bar's detach) ran.
     @objc
     func appDidEnterBackground() {
-        guard pipController?.isPictureInPictureActive != true,
-              BackgroundPlaybackService.isEnabled
-        else {
+        if pipController?.isPictureInPictureActive == true {
+            return
+        }
+        // Second chance for auto-PiP if resignActive didn't start it.
+        let state = autoPiPState(isPlaying: wasPlayingOnResign)
+        if AutoPiPDecision.shouldAutoStartPiP(state: state) {
+            setupPiP()
+            if let pip = pipController, pip.isPictureInPicturePossible {
+                pip.startPictureInPicture()
+                return
+            }
+        }
+        guard BackgroundPlaybackService.isEnabled else {
             return
         }
         playerLayer.player = nil
@@ -105,8 +132,9 @@ extension VideoPlayerView: AVPictureInPictureControllerDelegate {
     func pictureInPictureControllerWillStartPictureInPicture(
         _ controller: AVPictureInPictureController
     ) {
+        let size = ResponsiveMetrics.pipGlyphSize(forWidth: lastMetricsWidth)
         pipButton.setImage(
-            PlayerIcons.pipExit(),
+            PlayerIcons.pipExit(size: size),
             for: .normal
         )
     }
@@ -114,8 +142,9 @@ extension VideoPlayerView: AVPictureInPictureControllerDelegate {
     func pictureInPictureControllerDidStopPictureInPicture(
         _ controller: AVPictureInPictureController
     ) {
+        let size = ResponsiveMetrics.pipGlyphSize(forWidth: lastMetricsWidth)
         pipButton.setImage(
-            PlayerIcons.pip(),
+            PlayerIcons.pip(size: size),
             for: .normal
         )
     }

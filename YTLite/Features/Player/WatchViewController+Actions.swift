@@ -165,9 +165,22 @@ extension WatchViewController {
     }
 
     func updateLeftBarButton() {
-        navigationItem.leftBarButtonItem = videoHistory.isEmpty
-            ? makeMinimizeButton()
-            : makeBackButton()
+        if PlatformStyle.isMac {
+            // Floating control owns close on Mac — no bar item (would clip).
+            navigationItem.leftBarButtonItem = nil
+            navigationItem.hidesBackButton = true
+            navigationController?.setNavigationBarHidden(true, animated: false)
+            updateMacCloseControlAppearance()
+            return
+        }
+        // iOS watch: always use back chevron (not down-chevron minimize) —
+        // down glyph in the glass pill looked broken/off-center.
+        let item = makeBackButton()
+        item.tintColor = ThemeManager.shared.primaryText
+        item.accessibilityLabel = videoHistory.isEmpty ? "Close" : "Back"
+        item.accessibilityIdentifier = "watch.back"
+        navigationItem.leftBarButtonItem = item
+        navigationItem.hidesBackButton = true
     }
 
     func makeMinimizeButton() -> UIBarButtonItem {

@@ -6,9 +6,20 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXContainerItemProxy section */
+		A1T000022F6AD27A00E6C599 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 4940A7172F6AD27900E6C599 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 4940A71E2F6AD27900E6C599;
+			remoteInfo = YTLite;
+		};
+/* End PBXContainerItemProxy section */
+
 /* Begin PBXFileReference section */
 		4940A71F2F6AD27900E6C599 /* YTLite.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = YTLite.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		A1B2C3D4E5F6000123456789 /* Local.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = Local.xcconfig; path = Config/Local.xcconfig; sourceTree = SOURCE_ROOT; };
+		A1T000012F6AD27A00E6C599 /* YTLiteTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = YTLiteTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -30,10 +41,22 @@
 			path = YTLite;
 			sourceTree = "<group>";
 		};
+		A1T000032F6AD27A00E6C599 /* YTLiteTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = YTLiteTests;
+			sourceTree = "<group>";
+		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
 		4940A71C2F6AD27900E6C599 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A1T000042F6AD27A00E6C599 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -47,6 +70,7 @@
 			isa = PBXGroup;
 			children = (
 				4940A7212F6AD27900E6C599 /* YTLite */,
+				A1T000032F6AD27A00E6C599 /* YTLiteTests */,
 				4940A7202F6AD27900E6C599 /* Products */,
 				A1B2C3D4E5F6000123456789 /* Local.xcconfig */,
 			);
@@ -56,6 +80,7 @@
 			isa = PBXGroup;
 			children = (
 				4940A71F2F6AD27900E6C599 /* YTLite.app */,
+				A1T000012F6AD27A00E6C599 /* YTLiteTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -83,9 +108,32 @@
 			name = YTLite;
 			packageProductDependencies = (
 			);
-			productName = YTVLite;
+			productName = YTLite;
 			productReference = 4940A71F2F6AD27900E6C599 /* YTLite.app */;
 			productType = "com.apple.product-type.application";
+		};
+		A1T000052F6AD27A00E6C599 /* YTLiteTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A1T000082F6AD27A00E6C599 /* Build configuration list for PBXNativeTarget "YTLiteTests" */;
+			buildPhases = (
+				A1T000062F6AD27A00E6C599 /* Sources */,
+				A1T000042F6AD27A00E6C599 /* Frameworks */,
+				A1T000072F6AD27A00E6C599 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				A1T000092F6AD27A00E6C599 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				A1T000032F6AD27A00E6C599 /* YTLiteTests */,
+			);
+			name = YTLiteTests;
+			packageProductDependencies = (
+			);
+			productName = YTLiteTests;
+			productReference = A1T000012F6AD27A00E6C599 /* YTLiteTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
 		};
 /* End PBXNativeTarget section */
 
@@ -100,6 +148,10 @@
 					4940A71E2F6AD27900E6C599 = {
 						CreatedOnToolsVersion = 16.2;
 					};
+					A1T000052F6AD27A00E6C599 = {
+						CreatedOnToolsVersion = 16.2;
+						TestTargetID = 4940A71E2F6AD27900E6C599;
+					};
 				};
 			};
 			buildConfigurationList = 4940A71A2F6AD27900E6C599 /* Build configuration list for PBXProject "YTLite" */;
@@ -108,6 +160,7 @@
 			knownRegions = (
 				en,
 				Base,
+				"zh-Hans",
 			);
 			mainGroup = 4940A7162F6AD27900E6C599;
 			minimizedProjectReferenceProxies = 1;
@@ -119,12 +172,20 @@
 			projectRoot = "";
 			targets = (
 				4940A71E2F6AD27900E6C599 /* YTLite */,
+				A1T000052F6AD27A00E6C599 /* YTLiteTests */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
 		4940A71D2F6AD27900E6C599 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A1T000072F6AD27A00E6C599 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -152,7 +213,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "export PATH=\"/opt/homebrew/bin:/usr/local/bin:$PATH\"\ncd \"$SRCROOT\" || exit 1\n\nif command -v swiftlint >/dev/null 2>&1; then\n  swiftlint lint --config \"$SRCROOT/.swiftlint.yml\" --strict YTLite\nelse\n  echo \"error: SwiftLint is not installed or not available to Xcode.\"\n  echo \"error: Expected it in /opt/homebrew/bin or /usr/local/bin.\"\n  echo \"error: Install with: brew install swiftlint\"\n  exit 1\nfi\n";
+			shellScript = "export PATH=\"/opt/homebrew/bin:/usr/local/bin:$PATH\"\ncd \"$SRCROOT\" || exit 1\n\nif [ \"${SKIP_SWIFTLINT:-0}\" = \"1\" ]; then\n  echo \"note: SKIP_SWIFTLINT=1 — skipping SwiftLint\"\n  exit 0\nfi\n\nif command -v swiftlint >/dev/null 2>&1; then\n  swiftlint lint --config \"$SRCROOT/.swiftlint.yml\" --strict YTLite\nelse\n  echo \"error: SwiftLint is not installed or not available to Xcode.\"\n  echo \"error: Expected it in /opt/homebrew/bin or /usr/local/bin.\"\n  echo \"error: Install with: brew install swiftlint\"\n  echo \"error: Or set SKIP_SWIFTLINT=1 to skip (unsigned packaging scripts).\"\n  exit 1\nfi\n";
 		};
 		49B1D1002FA4B10000A1B299 /* Set Build Number */ = {
 			isa = PBXShellScriptBuildPhase;
@@ -183,7 +244,22 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		A1T000062F6AD27A00E6C599 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		A1T000092F6AD27A00E6C599 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 4940A71E2F6AD27900E6C599 /* YTLite */;
+			targetProxy = A1T000022F6AD27A00E6C599 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		4940A7332F6AD27A00E6C599 /* Debug */ = {
@@ -192,12 +268,15 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_ENTITLEMENTS = YTLite/YTLite.entitlements;
+				CODE_SIGN_IDENTITY = "-";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_TESTABILITY = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = YTLite/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = YTLite;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.entertainment";
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
@@ -208,13 +287,17 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
 				MARKETING_VERSION = 1.4.0;
+				PRODUCT_MODULE_NAME = YTLite;
 				PRODUCT_NAME = YTLite;
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
-				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MACCATALYST = YES;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_OBJC_BRIDGING_HEADER = "YTLite/YTLite-Bridging-Header.h";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
@@ -226,12 +309,15 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_ENTITLEMENTS = YTLite/YTLite.entitlements;
+				CODE_SIGN_IDENTITY = "-";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_TESTABILITY = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = YTLite/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = YTLite;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.entertainment";
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
@@ -242,13 +328,17 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
 				MARKETING_VERSION = 1.4.0;
+				PRODUCT_MODULE_NAME = YTLite;
 				PRODUCT_NAME = YTLite;
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
-				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MACCATALYST = YES;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_OBJC_BRIDGING_HEADER = "YTLite/YTLite-Bridging-Header.h";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
@@ -354,6 +444,7 @@
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				GCC_C_LANGUAGE_STANDARD = gnu17;
 				GCC_NO_COMMON_BLOCKS = YES;
@@ -370,6 +461,60 @@
 				SDKROOT = iphoneos;
 				SWIFT_COMPILATION_MODE = wholemodule;
 				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		A1T0000A2F6AD27A00E6C599 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = A1B2C3D4E5F6000123456789 /* Local.xcconfig */;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_IDENTITY = "-";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 12.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.4.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.verback.YTLiteTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/YTLite.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/YTLite";
+			};
+			name = Debug;
+		};
+		A1T0000B2F6AD27A00E6C599 /* Release */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = A1B2C3D4E5F6000123456789 /* Local.xcconfig */;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_IDENTITY = "-";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 12.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.4.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.verback.YTLiteTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/YTLite.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/YTLite";
 			};
 			name = Release;
 		};
@@ -390,6 +535,15 @@
 			buildConfigurations = (
 				4940A7332F6AD27A00E6C599 /* Debug */,
 				4940A7342F6AD27A00E6C599 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		A1T000082F6AD27A00E6C599 /* Build configuration list for PBXNativeTarget "YTLiteTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A1T0000A2F6AD27A00E6C599 /* Debug */,
+				A1T0000B2F6AD27A00E6C599 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

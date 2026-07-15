@@ -7,7 +7,6 @@ final class SignInEmptyStateView: UIView {
     private let iconImageView: UIImageView = {
         let iv = UIImageView()
         iv.contentMode = .scaleAspectFit
-        iv.tintColor = .lightGray
         iv.translatesAutoresizingMaskIntoConstraints = false
         if let asset = UIImage(named: "icon_person_fill") {
             iv.image = asset  // template rendering set in asset catalog
@@ -19,7 +18,6 @@ final class SignInEmptyStateView: UIView {
 
     private let titleLabel: UILabel = {
         let label = UILabel()
-        label.textColor = .lightGray
         label.font = UIFont.systemFont(ofSize: 15)
         label.textAlignment = .center
         label.numberOfLines = 0
@@ -31,7 +29,6 @@ final class SignInEmptyStateView: UIView {
         let btn = UIButton(type: .system)
         btn.setTitle("Sign In", for: .normal)
         btn.titleLabel?.font = UIFont.systemFont(ofSize: 15, weight: .semibold)
-        btn.backgroundColor = ThemeManager.shared.accent
         btn.setTitleColor(.white, for: .normal)
         btn.layer.cornerRadius = 20
         btn.contentEdgeInsets = UIEdgeInsets(top: 10, left: 32, bottom: 10, right: 32)
@@ -63,10 +60,26 @@ final class SignInEmptyStateView: UIView {
             signInButton.centerXAnchor.constraint(equalTo: centerXAnchor),
             signInButton.bottomAnchor.constraint(equalTo: bottomAnchor)
         ])
+
+        applyTheme()
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(applyTheme),
+            name: ThemeManager.didChangeNotification,
+            object: nil
+        )
     }
 
     @available(*, unavailable)
     required init?(coder: NSCoder) { fatalError("Not implemented") }
+
+    @objc
+    private func applyTheme() {
+        let theme = ThemeManager.shared
+        iconImageView.tintColor = theme.secondaryText
+        titleLabel.textColor = theme.secondaryText
+        signInButton.backgroundColor = theme.accent
+    }
 
     @objc
     private func signInTapped() {

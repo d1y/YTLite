@@ -40,7 +40,10 @@ extension SearchViewController {
     /// Derives the panel from the current input: history for an
     /// empty query, debounced suggestions otherwise.
     func updatePanel(for text: String) {
-        guard searchBar.isFirstResponder else {
+        let isEditing = PlatformStyle.isMac
+            ? macSearchField.isFirstResponder
+            : searchBar.isFirstResponder
+        guard isEditing else {
             return
         }
         let trimmed = text.trimmingCharacters(
@@ -59,8 +62,13 @@ extension SearchViewController {
 
     /// Row tap in the panel: fill the bar and run the search.
     func executePanelQuery(_ query: String) {
-        searchBar.text = query
-        searchBar.resignFirstResponder()
+        if PlatformStyle.isMac {
+            macSearchField.text = query
+            macSearchField.resignFirstResponder()
+        } else {
+            searchBar.text = query
+            searchBar.resignFirstResponder()
+        }
         search(query: query)
     }
 

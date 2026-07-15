@@ -189,6 +189,7 @@ extension VideoPlayerView {
             action: #selector(pipTapped),
             for: .touchUpInside
         )
+        MotionStyle.installPressFeedback(on: pipButton)
         setControlAvailability(
             pipButton,
             available: isPiPAvailable
@@ -333,58 +334,87 @@ extension VideoPlayerView {
 
     private func activateSettingsConstraints() {
         let safeArea = controlsView.safeAreaLayoutGuide
+        settingsWidthConstraint = settingsButton.widthAnchor.constraint(
+            equalToConstant: 36
+        )
+        settingsHeightConstraint = settingsButton.heightAnchor.constraint(
+            equalToConstant: 36
+        )
+        // Mac: nav minimize / traffic lights sit over the player top edge —
+        // push chrome down so it doesn't collide with window controls.
+        let topPad: CGFloat = PlatformStyle.isMac ? 48 : 20
         NSLayoutConstraint.activate([
             settingsButton.topAnchor.constraint(
-                equalTo: safeArea.topAnchor, constant: 20
+                equalTo: safeArea.topAnchor, constant: topPad
             ),
             settingsButton.trailingAnchor.constraint(
                 equalTo: safeArea.trailingAnchor, constant: -28
             ),
-            settingsButton.widthAnchor.constraint(equalToConstant: 36),
-            settingsButton.heightAnchor.constraint(equalToConstant: 36)
+            settingsWidthConstraint!,
+            settingsHeightConstraint!
         ])
     }
 
     private func activatePipConstraints() {
+        pipWidthConstraint = pipButton.widthAnchor.constraint(
+            equalToConstant: 36
+        )
+        pipHeightConstraint = pipButton.heightAnchor.constraint(
+            equalToConstant: 36
+        )
+        pipTrailingGapConstraint = pipButton.trailingAnchor.constraint(
+            equalTo: settingsButton.leadingAnchor,
+            constant: -4
+        )
         NSLayoutConstraint.activate([
             pipButton.centerYAnchor.constraint(
                 equalTo: settingsButton.centerYAnchor
             ),
-            pipButton.trailingAnchor.constraint(
-                equalTo: settingsButton.leadingAnchor, constant: -4
-            ),
-            pipButton.widthAnchor.constraint(equalToConstant: 36),
-            pipButton.heightAnchor.constraint(equalToConstant: 36)
+            pipTrailingGapConstraint!,
+            pipWidthConstraint!,
+            pipHeightConstraint!
         ])
     }
 
     private func activateCCConstraints() {
+        ccWidthConstraint = ccButton.widthAnchor.constraint(
+            equalToConstant: 32
+        )
+        ccHeightConstraint = ccButton.heightAnchor.constraint(
+            equalToConstant: 22
+        )
+        ccTrailingGapConstraint = ccButton.trailingAnchor.constraint(
+            equalTo: pipButton.leadingAnchor,
+            constant: -4
+        )
         NSLayoutConstraint.activate([
             ccButton.centerYAnchor.constraint(
                 equalTo: settingsButton.centerYAnchor
             ),
-            ccButton.trailingAnchor.constraint(
-                equalTo: pipButton.leadingAnchor, constant: -4
-            ),
-            ccButton.widthAnchor.constraint(equalToConstant: 32),
-            ccButton.heightAnchor.constraint(equalToConstant: 22)
+            ccTrailingGapConstraint!,
+            ccWidthConstraint!,
+            ccHeightConstraint!
         ])
     }
 
     private func activateSpeedConstraints() {
+        speedWidthConstraint = speedButton.widthAnchor.constraint(
+            equalToConstant: 36
+        )
+        speedHeightConstraint = speedButton.heightAnchor.constraint(
+            equalToConstant: 22
+        )
+        speedTrailingGapConstraint = speedButton.trailingAnchor.constraint(
+            equalTo: ccButton.leadingAnchor,
+            constant: -4
+        )
         NSLayoutConstraint.activate([
             speedButton.centerYAnchor.constraint(
                 equalTo: settingsButton.centerYAnchor
             ),
-            speedButton.trailingAnchor.constraint(
-                equalTo: ccButton.leadingAnchor, constant: -4
-            ),
-            speedButton.widthAnchor.constraint(
-                equalToConstant: 36
-            ),
-            speedButton.heightAnchor.constraint(
-                equalToConstant: 22
-            )
+            speedTrailingGapConstraint!,
+            speedWidthConstraint!,
+            speedHeightConstraint!
         ])
     }
 
@@ -412,6 +442,7 @@ extension VideoPlayerView {
             action: #selector(rewindTapped),
             for: .touchUpInside
         )
+        MotionStyle.installPressFeedback(on: rewindButton)
     }
 
     private func configurePlayPauseButton() {
@@ -422,6 +453,7 @@ extension VideoPlayerView {
             action: #selector(playPauseTapped),
             for: .touchUpInside
         )
+        MotionStyle.installPressFeedback(on: playPauseButton)
         updatePlayPauseIcon()
     }
 
@@ -437,9 +469,16 @@ extension VideoPlayerView {
             action: #selector(forwardTapped),
             for: .touchUpInside
         )
+        MotionStyle.installPressFeedback(on: forwardButton)
     }
 
     private func activateCenterConstraints() {
+        playPauseWidthConstraint = playPauseButton.widthAnchor.constraint(
+            equalToConstant: 52
+        )
+        playPauseHeightConstraint = playPauseButton.heightAnchor.constraint(
+            equalToConstant: 52
+        )
         NSLayoutConstraint.activate([
             playPauseButton.centerXAnchor.constraint(
                 equalTo: controlsView.centerXAnchor
@@ -447,44 +486,202 @@ extension VideoPlayerView {
             playPauseButton.centerYAnchor.constraint(
                 equalTo: controlsView.centerYAnchor
             ),
-            playPauseButton.widthAnchor.constraint(
-                equalToConstant: 52
-            ),
-            playPauseButton.heightAnchor.constraint(
-                equalToConstant: 52
-            )
+            playPauseWidthConstraint!,
+            playPauseHeightConstraint!
         ])
         activateSkipButtonConstraints()
     }
 
     private func activateSkipButtonConstraints() {
+        skipSpacingLeadingConstraint = rewindButton.trailingAnchor.constraint(
+            equalTo: playPauseButton.leadingAnchor,
+            constant: -32
+        )
+        skipSpacingTrailingConstraint = forwardButton.leadingAnchor.constraint(
+            equalTo: playPauseButton.trailingAnchor,
+            constant: 32
+        )
+        rewindWidthConstraint = rewindButton.widthAnchor.constraint(
+            equalToConstant: 44
+        )
+        rewindHeightConstraint = rewindButton.heightAnchor.constraint(
+            equalToConstant: 44
+        )
+        forwardWidthConstraint = forwardButton.widthAnchor.constraint(
+            equalToConstant: 44
+        )
+        forwardHeightConstraint = forwardButton.heightAnchor.constraint(
+            equalToConstant: 44
+        )
         NSLayoutConstraint.activate([
             rewindButton.centerYAnchor.constraint(
                 equalTo: playPauseButton.centerYAnchor
             ),
-            rewindButton.trailingAnchor.constraint(
-                equalTo: playPauseButton.leadingAnchor,
-                constant: -32
-            ),
-            rewindButton.widthAnchor.constraint(
-                equalToConstant: 44
-            ),
-            rewindButton.heightAnchor.constraint(
-                equalToConstant: 44
-            ),
+            skipSpacingLeadingConstraint!,
+            rewindWidthConstraint!,
+            rewindHeightConstraint!,
             forwardButton.centerYAnchor.constraint(
                 equalTo: playPauseButton.centerYAnchor
             ),
-            forwardButton.leadingAnchor.constraint(
-                equalTo: playPauseButton.trailingAnchor,
-                constant: 32
-            ),
-            forwardButton.widthAnchor.constraint(
-                equalToConstant: 44
-            ),
-            forwardButton.heightAnchor.constraint(
-                equalToConstant: 44
-            )
+            skipSpacingTrailingConstraint!,
+            forwardWidthConstraint!,
+            forwardHeightConstraint!
         ])
+    }
+
+    /// Scales transport + top chrome controls for large windows.
+    /// **Skips** when width bucket unchanged — called from Watch
+    /// `viewDidLayoutSubviews` every frame; re-rasterizing glyphs each time
+    /// caused 0x8BADF00D (PlayerIcons.playerIcon / UIGraphicsImageRenderer).
+    func applyResponsiveControlMetrics(forWidth width: CGFloat) {
+        guard width > 1 else {
+            return
+        }
+        if lastMetricsWidth > 0, abs(width - lastMetricsWidth) < 0.5 {
+            return
+        }
+        lastMetricsWidth = width
+        let play = ResponsiveMetrics.playControlSize(forWidth: width)
+        let skip = ResponsiveMetrics.skipControlSize(forWidth: width)
+        let gap = max(24, play * 0.55)
+        playPauseWidthConstraint?.constant = play
+        playPauseHeightConstraint?.constant = play
+        rewindWidthConstraint?.constant = skip
+        rewindHeightConstraint?.constant = skip
+        forwardWidthConstraint?.constant = skip
+        forwardHeightConstraint?.constant = skip
+        skipSpacingLeadingConstraint?.constant = -gap
+        skipSpacingTrailingConstraint?.constant = gap
+
+        // Top row: speed / CC / PiP / settings — grow hit targets + spacing.
+        let hit = ResponsiveMetrics.topControlHitSize(forWidth: width)
+        let topGap = -ResponsiveMetrics.topControlSpacing(forWidth: width)
+        let chipH = max(22, hit * 0.58)
+        let chipW = max(32, hit * 0.95)
+        settingsWidthConstraint?.constant = hit
+        settingsHeightConstraint?.constant = hit
+        pipWidthConstraint?.constant = hit
+        pipHeightConstraint?.constant = hit
+        ccWidthConstraint?.constant = chipW
+        ccHeightConstraint?.constant = chipH
+        speedWidthConstraint?.constant = chipW
+        speedHeightConstraint?.constant = chipH
+        pipTrailingGapConstraint?.constant = topGap
+        ccTrailingGapConstraint?.constant = topGap
+        speedTrailingGapConstraint?.constant = topGap
+
+        let labelSize = ResponsiveMetrics.chromeLabelPointSize(forWidth: width)
+        speedButton.titleLabel?.font = UIFont.systemFont(
+            ofSize: max(10, labelSize - 3),
+            weight: .bold
+        )
+        ccButton.titleLabel?.font = UIFont.systemFont(
+            ofSize: max(11, labelSize - 2),
+            weight: .bold
+        )
+
+        reapplyScaledGlyphs(forWidth: width)
+        installPointerHoverIfNeeded()
+        MacPointerHover.install(on: [
+            playPauseButton, rewindButton, forwardButton,
+            settingsButton, pipButton, ccButton, speedButton, fullscreenButton
+        ])
+    }
+
+    /// Re-setImage with size-aware PlayerIcons (cached rasters).
+    func reapplyScaledGlyphs(forWidth width: CGFloat) {
+        let play = ResponsiveMetrics.playControlSize(forWidth: width)
+        let skip = ResponsiveMetrics.skipControlSize(forWidth: width)
+        let settings = ResponsiveMetrics.settingsGlyphSize(forWidth: width)
+        let pip = ResponsiveMetrics.pipGlyphSize(forWidth: width)
+        let full = ResponsiveMetrics.fullscreenGlyphSize(forWidth: width)
+
+        let isPlaying = (player?.rate ?? 0) > 0
+        playPauseButton.setImage(
+            isPlaying
+                ? PlayerIcons.pause(size: play)
+                : PlayerIcons.play(size: play),
+            for: .normal
+        )
+        rewindButton.setImage(PlayerIcons.rewind10(size: skip), for: .normal)
+        forwardButton.setImage(PlayerIcons.forward10(size: skip), for: .normal)
+        settingsButton.setImage(PlayerIcons.settings(size: settings), for: .normal)
+
+        let pipActive = pipController?.isPictureInPictureActive == true
+        pipButton.setImage(
+            pipActive
+                ? PlayerIcons.pipExit(size: pip)
+                : PlayerIcons.pip(size: pip),
+            for: .normal
+        )
+        fullscreenButton.setImage(
+            PlayerIcons.fullscreen(isFullscreen: isFullscreen, size: full),
+            for: .normal
+        )
+    }
+
+    private func installPointerHoverIfNeeded() {
+        guard ResponsiveMetrics.shouldInstallPointerHover(
+            isMac: PlatformStyle.isMac
+        ), !didInstallPointerHover else {
+            return
+        }
+        didInstallPointerHover = true
+        let targets: [UIView] = [
+            playPauseButton,
+            rewindButton,
+            forwardButton,
+            settingsButton,
+            pipButton,
+            ccButton,
+            speedButton,
+            fullscreenButton
+        ]
+        for target in targets {
+            if #available(iOS 13.4, *) {
+                target.addInteraction(
+                    UIPointerInteraction(delegate: PlayerPointerRelay.shared)
+                )
+            }
+            if #available(iOS 13.0, *) {
+                let hover = UIHoverGestureRecognizer(
+                    target: self,
+                    action: #selector(handleControlHover(_:))
+                )
+                target.addGestureRecognizer(hover)
+            }
+        }
+    }
+
+    @available(iOS 13.0, *)
+    @objc
+    private func handleControlHover(_ gesture: UIHoverGestureRecognizer) {
+        guard let view = gesture.view else { return }
+        switch gesture.state {
+        case .began, .changed:
+            UIView.animate(withDuration: 0.12) {
+                view.alpha = 1
+                view.transform = CGAffineTransform(scaleX: 1.08, y: 1.08)
+            }
+        case .ended, .cancelled:
+            UIView.animate(withDuration: 0.12) {
+                view.transform = .identity
+            }
+        default:
+            break
+        }
+    }
+}
+
+@available(iOS 13.4, *)
+private final class PlayerPointerRelay: NSObject, UIPointerInteractionDelegate {
+    static let shared = PlayerPointerRelay()
+
+    func pointerInteraction(
+        _ interaction: UIPointerInteraction,
+        styleFor region: UIPointerRegion
+    ) -> UIPointerStyle? {
+        guard let view = interaction.view else { return nil }
+        return UIPointerStyle(effect: .highlight(UITargetedPreview(view: view)))
     }
 }

@@ -7,11 +7,17 @@ final class AuthViewController: UIViewController {
 
     private let titleLabel = UILabel()
     private let instructionLabel = UILabel()
-    private let codeLabel = UILabel()
+    private let codeChip = DeviceCodeChipView()
     private let statusLabel = UILabel()
-    private let openButton = UIButton(type: .system)
+    private let openButton = HoverFillButton(type: .system)
+    private let retryButton = HoverFillButton(type: .system)
     private let anonymousButton = UIButton(type: .system)
-    private let spinner = UIActivityIndicatorView(style: .white)
+    private let spinner: UIActivityIndicatorView = {
+        if #available(iOS 13.0, *) {
+            return UIActivityIndicatorView(style: .medium)
+        }
+        return UIActivityIndicatorView(style: .white)
+    }()
 
     private var verificationURL: URL?
 
@@ -36,9 +42,36 @@ final class AuthViewController: UIViewController {
         guard let url = verificationURL else {
             return
         }
-        UIPasteboard.general.string = codeLabel.text
+        if let code = codeChip.code {
+            UIPasteboard.general.string = code
+        }
+        // Brief status feedback after click.
+        let previous = statusLabel.text
+        statusLabel.textColor = UIColor(white: 0.75, alpha: 1)
+        statusLabel.text = "Code copied · Opening browser…"
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak self] in
+            guard let self, self.verificationURL != nil else { return }
+            self.statusLabel.textColor = .lightGray
+            self.statusLabel.text = previous ?? "Waiting for authorization..."
+        }
+        // On Mac, SFSafariViewController is awkward — open the system browser.
+        if PlatformStyle.isMac {
+            UIApplication.shared.open(url, options: [:], completionHandler: nil)
+            return
+        }
         let safari = SFSafariViewController(url: url)
         present(safari, animated: true)
+    }
+
+    @objc
+    private func retrySignIn() {
+        retryButton.isHidden = true
+        openButton.isHidden = true
+        codeChip.code = nil
+        statusLabel.text = "Connecting to YouTube…"
+        statusLabel.textColor = .lightGray
+        spinner.startAnimating()
+        startAuth()
     }
 
     @objc
@@ -60,29 +93,45 @@ private extension AuthViewController {
         titleLabel.font = UIFont.boldSystemFont(ofSize: 22)
         titleLabel.textAlignment = .center
 
-        instructionLabel.text = "Tap the button below,"
-            + " then paste your code on the page that opens."
+        instructionLabel.text = "Click the code to copy, then open the link"
+            + " and paste it on the page."
         instructionLabel.textColor = .lightGray
         instructionLabel.font = UIFont.systemFont(ofSize: 15)
         instructionLabel.textAlignment = .center
         instructionLabel.numberOfLines = 0
 
-        codeLabel.textColor = .white
-        codeLabel.font = UIFont(
-            name: "Menlo-Bold",
-            size: 36
-        ) ?? UIFont.boldSystemFont(ofSize: 36)
-        codeLabel.textAlignment = .center
-
         statusLabel.text = "Fetching code..."
         statusLabel.textColor = .lightGray
         statusLabel.font = UIFont.systemFont(ofSize: 14)
         statusLabel.textAlignment = .center
+        // Multi-line so network/OAuth details are not clipped to one line.
+        statusLabel.numberOfLines = 0
     }
 
     func configureButtons() {
         configureOpenButton()
+        configureRetryButton()
         configureAnonymousButton()
+    }
+
+    func configureRetryButton() {
+        retryButton.setTitle("Try Again", for: .normal)
+        retryButton.titleLabel?.font = UIFont.systemFont(ofSize: 16, weight: .semibold)
+        retryButton.setTitleColor(.white, for: .normal)
+        retryButton.applyFill(UIColor(white: 0.22, alpha: 1))
+        retryButton.layer.cornerRadius = 12
+        if #available(iOS 13.0, *) {
+            retryButton.layer.cornerCurve = .continuous
+        }
+        retryButton.contentEdgeInsets = UIEdgeInsets(
+            top: 12, left: 28, bottom: 12, right: 28
+        )
+        retryButton.addTarget(
+            self,
+            action: #selector(retrySignIn),
+            for: .touchUpInside
+        )
+        retryButton.isHidden = true
     }
 
     func configureOpenButton() {
@@ -91,9 +140,12 @@ private extension AuthViewController {
             for: .normal
         )
         openButton.titleLabel?.font = UIFont.boldSystemFont(ofSize: 17)
-        openButton.backgroundColor = ThemeManager.shared.accent
         openButton.setTitleColor(.white, for: .normal)
-        openButton.layer.cornerRadius = 10
+        openButton.applyFill(ThemeManager.shared.accent)
+        openButton.layer.cornerRadius = 12
+        if #available(iOS 13.0, *) {
+            openButton.layer.cornerCurve = .continuous
+        }
         openButton.contentEdgeInsets = UIEdgeInsets(
             top: 14, left: 28, bottom: 14, right: 28
         )
@@ -129,8 +181,8 @@ private extension AuthViewController {
 
     func addControlSubviews() {
         let views: [UIView] = [
-            titleLabel, instructionLabel, codeLabel,
-            openButton, statusLabel, spinner, anonymousButton
+            titleLabel, instructionLabel, codeChip,
+            openButton, retryButton, statusLabel, spinner, anonymousButton
         ]
         views.forEach {
             $0.translatesAutoresizingMaskIntoConstraints = false
@@ -164,12 +216,12 @@ private extension AuthViewController {
                 equalTo: view.trailingAnchor,
                 constant: -padding
             ),
-            codeLabel.centerXAnchor.constraint(
+            codeChip.centerXAnchor.constraint(
                 equalTo: view.centerXAnchor
             ),
-            codeLabel.topAnchor.constraint(
+            codeChip.topAnchor.constraint(
                 equalTo: titleLabel.bottomAnchor,
-                constant: 48
+                constant: 40
             )
         ])
     }
@@ -180,7 +232,7 @@ private extension AuthViewController {
                 equalTo: view.centerXAnchor
             ),
             instructionLabel.topAnchor.constraint(
-                equalTo: codeLabel.bottomAnchor,
+                equalTo: codeChip.bottomAnchor,
                 constant: 20
             ),
             instructionLabel.leadingAnchor.constraint(
@@ -206,6 +258,13 @@ private extension AuthViewController {
                 equalTo: view.centerXAnchor
             ),
             openButton.topAnchor.constraint(
+                equalTo: instructionLabel.bottomAnchor,
+                constant: 32
+            ),
+            retryButton.centerXAnchor.constraint(
+                equalTo: view.centerXAnchor
+            ),
+            retryButton.topAnchor.constraint(
                 equalTo: instructionLabel.bottomAnchor,
                 constant: 32
             ),
@@ -250,13 +309,14 @@ private extension AuthViewController {
 // MARK: - Auth Flow
 private extension AuthViewController {
     func startAuth() {
+        statusLabel.text = "Connecting to YouTube…"
+        statusLabel.textColor = .lightGray
+        retryButton.isHidden = true
         OAuthClient.shared.requestDeviceCode { [weak self] result in
             DispatchQueue.main.async {
                 switch result {
                 case .failure(let error):
-                    self?.statusLabel.text =
-                        "Error: \(error.localizedDescription)"
-                    self?.spinner.stopAnimating()
+                    self?.showSignInFailure(error)
                 case .success(let code):
                     self?.handleDeviceCode(code)
                 }
@@ -264,11 +324,36 @@ private extension AuthViewController {
         }
     }
 
+    func showSignInFailure(_ error: Error) {
+        let detail = error.localizedDescription
+        AppLog.auth("startAuth failed: \(detail)")
+        spinner.stopAnimating()
+        openButton.isHidden = true
+        retryButton.isHidden = false
+        statusLabel.textColor = UIColor(red: 1, green: 0.45, blue: 0.45, alpha: 1)
+        let clean = NetworkSessionFactory.describe(error)
+        statusLabel.text =
+            "Could not start sign-in.\n\n"
+            + "\(clean)\n\n"
+            + "也可点 Continue Anonymously 先浏览。"
+    }
+
     func handleDeviceCode(_ code: OAuthClient.DeviceCodeResponse) {
-        codeLabel.text = code.userCode
+        codeChip.code = code.userCode
         verificationURL = URL(string: code.verificationURL)
         openButton.isHidden = false
+        // Subtle enter animation for the primary CTA.
+        openButton.alpha = 0
+        openButton.transform = CGAffineTransform(
+            scaleX: MotionStyle.enterScale,
+            y: MotionStyle.enterScale
+        )
+        MotionStyle.animateChrome {
+            self.openButton.alpha = 1
+            self.openButton.transform = .identity
+        }
         statusLabel.text = "Waiting for authorization..."
+        statusLabel.textColor = .lightGray
 
         let config = OAuthClient.PollConfig(
             deviceCode: code.deviceCode,

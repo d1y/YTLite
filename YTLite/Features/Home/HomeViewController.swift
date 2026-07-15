@@ -3,6 +3,8 @@ import UIKit
 class HomeViewController: VideosViewController {
     private let service: FeedService
     private let cache: AppCache
+    /// Cancels stale completions / watchdogs when a newer load starts.
+    private var loadGeneration = UUID()
 
     override var columns: Int {
         if UIDevice.current.userInterfaceIdiom == .phone {
@@ -53,7 +55,8 @@ class HomeViewController: VideosViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        title = "Home"
+        // No nav "首页" — keep title string for tab sync only.
+        RootScreenTitle.clear(on: self, tabTitle: L10n.tr(L10n.Tab.home))
         AppLog.home("viewDidLoad")
         setupEmptyViews()
         setupToolbar()
@@ -127,25 +130,62 @@ class HomeViewController: VideosViewController {
         AppLog.home("network fetch start")
         errorLabel.isHidden = true
         signInEmptyView.isHidden = true
+        isLoadingInitial = true
+        spinner.startAnimating()
+        collectionView?.reloadData()
+
+        // Watchdog: never leave the skeleton forever if the network stalls.
+        let generation = UUID()
+        loadGeneration = generation
+        DispatchQueue.main.asyncAfter(deadline: .now() + 25) { [weak self] in
+            guard let self, self.loadGeneration == generation, self.isLoadingInitial else {
+                return
+            }
+            AppLog.home("network fetch watchdog — still loading after 25s")
+            self.setPage(FeedPage(videos: [], continuation: nil))
+            self.errorLabel.text =
+                "Loading is taking too long.\nPull down to retry.\n\n"
+                + "If you use Clash/Surge, enable TUN for all apps."
+            self.errorLabel.isHidden = false
+        }
+
         service.fetchHomeFeed { [weak self] result in
             DispatchQueue.main.async {
                 guard let self else {
                     return
                 }
+                guard self.loadGeneration == generation else {
+                    return
+                }
                 let ms = Int(Date().timeIntervalSince(t0) * 1_000)
-                self.spinner.stopAnimating()
-                self.endRefreshing()
                 switch result {
                 case .success(let page):
-                    AppLog.home("network fetch done \(ms)ms videos=\(page.videos.count)")
-                    self.cache.setHomeFeed(page)
-                    self.setPage(page)
+                    AppLog.home(
+                        "network fetch done \(ms)ms videos=\(page.videos.count)"
+                    )
+                    if page.videos.isEmpty {
+                        self.setPage(page)
+                        if OAuthClient.shared.isAnonymous {
+                            self.signInEmptyView.isHidden = false
+                        } else {
+                            self.errorLabel.text =
+                                "No videos returned.\nPull down to retry"
+                            self.errorLabel.isHidden = false
+                        }
+                    } else {
+                        self.cache.setHomeFeed(page)
+                        self.setPage(page)
+                    }
                 case .failure(let err):
                     AppLog.home("network fetch failed \(ms)ms: \(err)")
                     self.setPage(FeedPage(videos: [], continuation: nil))
                     if OAuthClient.shared.isAnonymous {
                         self.signInEmptyView.isHidden = false
                     } else {
+                        let detail = (err as? LocalizedError)?
+                            .errorDescription ?? err.localizedDescription
+                        self.errorLabel.text =
+                            "Couldn't load feed\n\(detail)\nPull down to retry"
                         self.errorLabel.isHidden = false
                     }
                 }

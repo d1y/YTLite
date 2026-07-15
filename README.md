@@ -1,6 +1,6 @@
 # YTLite
 
-A lightweight YouTube client for iOS 12+ built entirely with UIKit. No ads, no tracking, no dependencies.
+A lightweight YouTube client for iOS 12+ (and macOS via Mac Catalyst) built entirely with UIKit. No ads, no tracking, no dependencies.
 
 <a href="https://buymeacoffee.com/verback2308" target="_blank" rel="noopener noreferrer"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-violet.png" alt="Buy me a coffee" height="50"></a>
 
@@ -19,7 +19,9 @@ When Google dropped support for the official YouTube app on older devices, there
 - **Video Playback** — up to 1080p 60fps quality
 - **Kids Content** — plays videos the standard API sources refuse, via a dedicated playback source
 - **Background Audio** — Continue listening with the screen off
-- **Picture-in-Picture** — Watch while using other apps
+- **Picture-in-Picture** — Watch while using other apps, with optional **Auto PiP** on backgrounding
+- **Liquid Glass chrome** — Tab/nav/mini-player materials on iOS 26+ / macOS 26+ (solid fallbacks on older OS)
+- **Chinese localization** — Simplified Chinese (`zh-Hans`) for primary chrome and settings
 - **SponsorBlock** — Skip sponsored segments automatically
 - **Return YouTube Dislike** — See dislike counts again
 - **Subtitles** — Full subtitle/caption support with VTT parsing
@@ -35,7 +37,7 @@ When Google dropped support for the official YouTube app on older devices, there
 
 ## How to Use
 
-YTLite runs on devices with **iOS 12 and above**.
+YTLite runs on devices with **iOS 12 and above**, and on **macOS** (Mac Catalyst) via `./make_dmg.sh`.
 
 ### Jailbroken devices
 
@@ -61,8 +63,11 @@ Download the IPA and install via **SideStore**, **AltStore**, or **LiveContainer
 git clone https://github.com/verback2308/YTLite.git
 cd YTLite
 cp Config/Local.xcconfig.example Config/Local.xcconfig
-./make_ipa.sh
+./make_ipa.sh          # unsigned iOS IPA
+./make_dmg.sh          # unsigned macOS DMG (Mac Catalyst)
 ```
+
+The macOS package is **unsigned** (no Developer ID / notarization). First launch may require right-click → Open under Gatekeeper.
 
 ## Known Issues and Limitations
 

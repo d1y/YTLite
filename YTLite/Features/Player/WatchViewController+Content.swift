@@ -24,6 +24,10 @@ private func formatVoteCount(_ count: Int) -> String {
 
 extension WatchViewController {
     func loadInitialState() {
+        if PlatformStyle.isMac {
+            title = nil
+            navigationItem.title = ""
+        }
         titleLabel.text = initialVideo.title
         metaLabel.text = buildMetaText(
             viewCount: initialVideo.viewCount,
@@ -110,7 +114,14 @@ extension WatchViewController {
     func applyWatchPage(_ page: WatchPage) {
         watchPage = page
         cache.setWatchPage(page, videoId: initialVideo.id)
-        title = page.video.title
+        // macOS: long titles in the nav bar collide with traffic lights /
+        // minimize control. Keep the full title only in the content label.
+        if PlatformStyle.isMac {
+            title = nil
+            navigationItem.title = ""
+        } else {
+            title = page.video.title
+        }
         titleLabel.text = page.video.title
         metaLabel.text = buildMetaText(
             viewCount: page.video.viewCount,

@@ -27,7 +27,6 @@ private func makeLandscapeRelatedLayout() -> UICollectionViewFlowLayout {
     return layout
 }
 
-// swiftlint:disable:next type_body_length
 final class WatchViewController: UIViewController {
     // MARK: - Dependencies
 
@@ -111,6 +110,14 @@ final class WatchViewController: UIViewController {
     let shareButton = UIButton(type: .system)
     let saveButton = UIButton(type: .system)
     let downloadButton = UIButton(type: .system)
+    /// Mac: floating back/minimize — nav-bar chevron was clipped under titlebar
+    /// (empty shell next to traffic lights). Always owned by this VC.
+    let macCloseControl = UIButton(type: .custom)
+    var macCloseControlInstalled = false
+    var macCloseLeadingConstraint: NSLayoutConstraint?
+    var macCloseTopConstraint: NSLayoutConstraint?
+    var macCloseWidthConstraint: NSLayoutConstraint?
+    var macCloseHeightConstraint: NSLayoutConstraint?
     let likeCountLabel = UILabel()
     let dislikeCountLabel = UILabel()
     var likeCount: String?
@@ -120,6 +127,17 @@ final class WatchViewController: UIViewController {
     // MARK: - Constraints
 
     var playerAspectConstraint: NSLayoutConstraint?
+    /// Caps player height so comments/profile keep space on large Mac windows.
+    var playerMaxHeightConstraint: NSLayoutConstraint?
+    var playerPrefHeightConstraint: NSLayoutConstraint?
+    /// One-shot Mac pointer hover install for action / subscribe chrome.
+    var didInstallWatchPointerHover = false
+    /// Last width used by `applyResponsiveChromeTypography` (skip layout thrash).
+    var lastResponsiveChromeWidth: CGFloat = -1
+    /// Last action-bar icon size that was rasterized onto the buttons.
+    var lastActionBarIconSize: CGFloat = -1
+    /// Re-entrancy guard: `updateLayoutForSize` must not re-enter via layoutIfNeeded.
+    var isUpdatingWatchLayout = false
     var relatedHeightConstraint: NSLayoutConstraint?
     var playerTopConstraint: NSLayoutConstraint?
     var playerLeadingConstraint: NSLayoutConstraint?
@@ -141,6 +159,15 @@ final class WatchViewController: UIViewController {
         frame: CGRect
     )?
     var isLandscapeFullscreen = false
+    /// Mac: UIKit scene/window observers installed once.
+    var didInstallMacWindowObservers = false
+    /// Last valid window size while app-fullscreen (detect green-button shrink).
+    var lastMacFullscreenHostSize: CGSize = .zero
+    /// Mac: we asked for display-level full-screen (green-light equivalent).
+    var didRequestMacSystemFullScreen = false
+    /// Mac: suppress recover→forceExit while system FS enter is animating
+    /// (mid-transition 0×0 bounds used to abort the first click).
+    var macFSSettleUntil: Date?
     var channelTopToMeta: NSLayoutConstraint?
     var channelTopToDesc: NSLayoutConstraint?
 
@@ -214,72 +241,17 @@ final class WatchViewController: UIViewController {
         }
         loadWatchPage()
         addNotificationObservers()
+        installMacWindowObserversIfNeeded()
     }
-
-    override func viewDidLayoutSubviews() {
-        super.viewDidLayoutSubviews()
-        updateLayoutForSize()
-        adjustForFloatingNavBar()
-    }
-
-    override func viewWillDisappear(
-        _ animated: Bool
-    ) {
-        super.viewWillDisappear(animated)
-        let isDismissing = isMovingFromParent
-            || isBeingDismissed
-            || navigationController?.isBeingDismissed == true
-        if isDismissing {
-            pageLoadToken.cancel()
-            videoPlayerView?.player?.pause()
-        }
-    }
-
-    // MARK: - Other Methods
-
-    override func viewWillTransition(
-        to size: CGSize,
-        with coordinator:
-        UIViewControllerTransitionCoordinator
-    ) {
-        super.viewWillTransition(
-            to: size,
-            with: coordinator
-        )
-        coordinator.animate(
-            alongsideTransition: { [weak self] _ in
-                guard let self else {
-                    return
-                }
-                // While in fullscreen the player view lives directly in the
-                // window; keep its frame in sync with the rotating window.
-                if fullscreenSnapshot != nil,
-                   let window = view.window {
-                    videoPlayerView?.frame = window.bounds
-                    videoPlayerView?.setNeedsLayout()
-                } else {
-                    updateLayoutForSize(size)
-                }
-                view.layoutIfNeeded()
-            },
-            completion: { [weak self] _ in
-                self?.updateLayoutForSize()
-            }
-        )
-    }
-
-    // MARK: - Deinitializer
 
     deinit {
-        NotificationCenter.default
-            .removeObserver(self)
+        NotificationCenter.default.removeObserver(self)
         if UIDevice.current.userInterfaceIdiom != .pad {
             UIDevice.current.endGeneratingDeviceOrientationNotifications()
         }
         statusObservation?.invalidate()
         statusObservation = nil
-        if let item =
-            videoPlayerView?.player?.currentItem {
+        if let item = videoPlayerView?.player?.currentItem {
             stopObservingPlayerItem(item)
         }
         videoPlayerView?.detach()

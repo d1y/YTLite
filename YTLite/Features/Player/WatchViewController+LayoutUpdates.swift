@@ -7,28 +7,187 @@ extension WatchViewController {
         guard fullscreenSnapshot == nil else {
             return
         }
+        // Re-entrancy: layoutIfNeeded from here used to re-enter via
+        // viewDidLayoutSubviews and thrash icon rasterization (0x8BADF00D).
+        guard !isUpdatingWatchLayout else {
+            return
+        }
+        isUpdatingWatchLayout = true
+        defer { isUpdatingWatchLayout = false }
+
         let resolved = size ?? view.bounds.size
-        let isLandscape = resolved.width > resolved.height
-        if isLandscape {
+        guard resolved.width > 1, resolved.height > 1 else {
+            return
+        }
+        let useSidebar = ResponsiveMetrics.prefersWatchSidebar(
+            containerWidth: resolved.width,
+            containerHeight: resolved.height
+        )
+        if useSidebar {
             activateLandscapeLayout()
         } else {
             activatePortraitLayout()
         }
+        applyPlayerHeightCap(containerSize: resolved, useSidebar: useSidebar)
         relatedCollectionView.backgroundColor = ThemeManager.shared.background
-        let expected = isLandscape ? landscapeRelatedLayout : portraitRelatedLayout
+        let expected = useSidebar ? landscapeRelatedLayout : portraitRelatedLayout
         if relatedCollectionView.collectionViewLayout !== expected {
             relatedCollectionView.setCollectionViewLayout(expected, animated: false)
         }
-        if !isLandscape { relatedCollectionView.alpha = 1 }
+        if !useSidebar { relatedCollectionView.alpha = 1 }
         view.bringSubviewToFront(playerContainer)
         view.bringSubviewToFront(sidebarContainer)
-        if let sv = relatedCollectionView.superview {
-            sv.setNeedsLayout()
-            sv.layoutIfNeeded()
-        }
+        // Do **not** call layoutIfNeeded here — nested layout during
+        // viewDidLayoutSubviews multiplies main-thread work.
         if relatedCollectionView.bounds.width > 0 {
-            updateRelatedLayout(isLandscape: isLandscape, containerSize: resolved)
+            updateRelatedLayout(isLandscape: useSidebar, containerSize: resolved)
         }
+        let columnW = playerColumnWidth(
+            containerSize: resolved,
+            useSidebar: useSidebar
+        )
+        videoPlayerView?.applyResponsiveControlMetrics(forWidth: columnW)
+        applyResponsiveChromeTypography(forWidth: resolved.width)
+    }
+
+    /// Scale title / channel / labels / action-bar glyphs on large windows.
+    /// Skips when width bucket unchanged — every layout used to re-rasterize
+    /// action icons and watchdog-killed the app (0x8BADF00D).
+    func applyResponsiveChromeTypography(forWidth width: CGFloat) {
+        guard width > 1 else {
+            return
+        }
+        // Ignore sub-point jitter from layout passes.
+        if abs(width - lastResponsiveChromeWidth) < 0.5,
+           lastActionBarIconSize > 0 {
+            return
+        }
+        lastResponsiveChromeWidth = width
+
+        let titleSize = ResponsiveMetrics.chromeLabelPointSize(forWidth: width) + 5
+        let bodySize = ResponsiveMetrics.chromeLabelPointSize(forWidth: width)
+        let metaSize = max(12, bodySize - 1)
+        titleLabel.font = UIFont.systemFont(ofSize: titleSize, weight: .semibold)
+        metaLabel.font = UIFont.systemFont(ofSize: metaSize)
+        channelNameLabel.font = UIFont.systemFont(ofSize: bodySize, weight: .semibold)
+        channelMetaLabel.font = UIFont.systemFont(ofSize: max(11, metaSize - 1))
+        commentsLabel.font = UIFont.systemFont(ofSize: bodySize, weight: .semibold)
+        descriptionLabel.font = UIFont.systemFont(ofSize: metaSize)
+        subscribeButton.titleLabel?.font = UIFont.systemFont(
+            ofSize: bodySize,
+            weight: .semibold
+        )
+        let caption = max(11, metaSize - 2)
+        let iconSize = ResponsiveMetrics.actionBarIconSize(forWidth: width)
+        let iconSizeChanged = abs(iconSize - lastActionBarIconSize) >= 0.5
+        lastActionBarIconSize = iconSize
+
+        for case let stack as UIStackView in actionBar.arrangedSubviews {
+            for case let button as UIButton in stack.arrangedSubviews {
+                if iconSizeChanged,
+                   let name = button.accessibilityIdentifier,
+                   let rendered = PlayerIcons.actionBarIcon(
+                       named: name,
+                       size: iconSize
+                   ) {
+                    button.setImage(rendered, for: .normal)
+                    button.tintColor = ThemeManager.shared.primaryText
+                }
+                for constraint in button.constraints
+                    where constraint.identifier == "actionBarIconHeight" {
+                    constraint.constant = iconSize + 6
+                }
+            }
+            for case let label as UILabel in stack.arrangedSubviews {
+                label.font = UIFont.systemFont(ofSize: caption)
+            }
+        }
+        installWatchPointerHoverIfNeeded()
+    }
+
+    private func installWatchPointerHoverIfNeeded() {
+        guard ResponsiveMetrics.shouldInstallPointerHover(
+            isMac: PlatformStyle.isMac
+        ) else {
+            return
+        }
+        guard !didInstallWatchPointerHover else { return }
+        didInstallWatchPointerHover = true
+        let buttons: [UIButton] = [
+            subscribeButton,
+            likeButton,
+            dislikeButton,
+            shareButton,
+            saveButton,
+            downloadButton,
+            descriptionButton,
+            loadMoreCommentsButton
+        ]
+        for button in buttons {
+            if #available(iOS 13.4, *) {
+                button.addInteraction(
+                    UIPointerInteraction(delegate: WatchPointerRelay.shared)
+                )
+            }
+        }
+    }
+
+    /// Cap 16:9 player height so profile/comments keep a usable region.
+    /// On large Mac windows, the equal-height preferred constraint wins so
+    /// the player cannot balloon and crush the metadata strip.
+    func applyPlayerHeightCap(containerSize: CGSize, useSidebar: Bool) {
+        let columnWidth = playerColumnWidth(
+            containerSize: containerSize,
+            useSidebar: useSidebar
+        )
+        let preferred = ResponsiveMetrics.playerHeight(
+            containerWidth: columnWidth,
+            containerHeight: containerSize.height
+        )
+        let maxH = ResponsiveMetrics.maxPlayerHeight(
+            containerWidth: columnWidth,
+            containerHeight: containerSize.height
+        )
+        guard playerAspectConstraint != nil else { return }
+
+        // Drop aspect-ratio driver; fixed preferred height is authoritative.
+        playerAspectConstraint?.isActive = false
+
+        if playerMaxHeightConstraint == nil {
+            playerMaxHeightConstraint = playerContainer.heightAnchor.constraint(
+                lessThanOrEqualToConstant: maxH
+            )
+            playerMaxHeightConstraint?.priority = .required
+            playerMaxHeightConstraint?.isActive = true
+        } else {
+            playerMaxHeightConstraint?.constant = maxH
+        }
+
+        if playerPrefHeightConstraint == nil {
+            playerPrefHeightConstraint = playerContainer.heightAnchor.constraint(
+                equalToConstant: preferred
+            )
+            // Required so it always beats any residual aspect constraint.
+            playerPrefHeightConstraint?.priority = .required
+            playerPrefHeightConstraint?.isActive = true
+        } else {
+            playerPrefHeightConstraint?.constant = preferred
+            playerPrefHeightConstraint?.priority = .required
+            if playerPrefHeightConstraint?.isActive != true {
+                playerPrefHeightConstraint?.isActive = true
+            }
+        }
+    }
+
+    private func playerColumnWidth(
+        containerSize: CGSize,
+        useSidebar: Bool
+    ) -> CGFloat {
+        if useSidebar {
+            let sidebar = sidebarWidthConstraint?.constant ?? 340
+            return max(containerSize.width - sidebar, 320)
+        }
+        return containerSize.width
     }
 
     func activateLandscapeLayout() {
@@ -38,6 +197,12 @@ extension WatchViewController {
         sidebarTrailingConstraint?.isActive = true
         sidebarBottomConstraint?.isActive = true
         sidebarWidthConstraint?.isActive = true
+        // Wider related rail on large Mac windows.
+        if PlatformStyle.isMac, view.bounds.width >= 1_400 {
+            sidebarWidthConstraint?.constant = 400
+        } else {
+            sidebarWidthConstraint?.constant = 340
+        }
         sidebarContainer.isHidden = false
         playerTrailingConstraint?.isActive = false
         playerToSidebarConstraint?.isActive = true
@@ -57,7 +222,6 @@ extension WatchViewController {
         playerToSidebarConstraint?.isActive = false
         playerTrailingConstraint?.isActive = true
         moveRelatedCollection(toLandscape: false)
-        // Force multi-line labels to re-wrap at the new (wider) portrait width.
         metaLabel.invalidateIntrinsicContentSize()
         metaLabel.setNeedsLayout()
     }
@@ -182,5 +346,18 @@ extension WatchViewController {
             rv.bottomAnchor.constraint(equalTo: sc.bottomAnchor)
         ]
         NSLayoutConstraint.activate(relatedLandscapeConstraints)
+    }
+}
+
+@available(iOS 13.4, *)
+private final class WatchPointerRelay: NSObject, UIPointerInteractionDelegate {
+    static let shared = WatchPointerRelay()
+
+    func pointerInteraction(
+        _ interaction: UIPointerInteraction,
+        styleFor region: UIPointerRegion
+    ) -> UIPointerStyle? {
+        guard let view = interaction.view else { return nil }
+        return UIPointerStyle(effect: .highlight(UITargetedPreview(view: view)))
     }
 }

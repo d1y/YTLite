@@ -1,6 +1,8 @@
 import UIKit
 
 /// Player control icons drawn with UIBezierPath (iOS 12 compatible).
+/// All glyphs accept an explicit `size` so large Mac windows can re-render
+/// at responsive point sizes (not just grow empty hit boxes).
 enum PlayerIcons {
     private struct CornerPoints {
         let corner: CGPoint
@@ -8,101 +10,194 @@ enum PlayerIcons {
         let vertical: CGPoint
     }
 
-    static func play(color: UIColor = .white) -> UIImage {
-        draw(size: CGSize(width: 44, height: 44)) { _ in
+    // Phone defaults — preserved for call sites that omit size.
+    static let defaultPlaySize: CGFloat = 44
+    static let defaultSkipSize: CGFloat = 36
+    static let defaultSettingsSize: CGFloat = 26
+    static let defaultPipSize: CGFloat = 26
+    static let defaultFullscreenSize: CGFloat = 24
+
+    static func play(
+        color: UIColor = .white,
+        size: CGFloat = defaultPlaySize
+    ) -> UIImage {
+        let s = max(16, size).rounded()
+        let key = "play#\(Int(s))"
+        if let cached = vectorIconCache[key] {
+            return cached
+        }
+        let img = draw(size: CGSize(width: s, height: s)) { _ in
+            let scale = s / defaultPlaySize
             let path = UIBezierPath()
-            path.move(to: CGPoint(x: 14, y: 10))
-            path.addLine(to: CGPoint(x: 36, y: 22))
-            path.addLine(to: CGPoint(x: 14, y: 34))
+            path.move(to: CGPoint(x: 14 * scale, y: 10 * scale))
+            path.addLine(to: CGPoint(x: 36 * scale, y: 22 * scale))
+            path.addLine(to: CGPoint(x: 14 * scale, y: 34 * scale))
             path.close()
             color.setFill()
             path.fill()
         }
+        vectorIconCache[key] = img
+        return img
     }
 
-    static func pause(color: UIColor = .white) -> UIImage {
-        draw(size: CGSize(width: 44, height: 44)) { _ in
+    static func pause(
+        color: UIColor = .white,
+        size: CGFloat = defaultPlaySize
+    ) -> UIImage {
+        let s = max(16, size).rounded()
+        let key = "pause#\(Int(s))"
+        if let cached = vectorIconCache[key] {
+            return cached
+        }
+        let img = draw(size: CGSize(width: s, height: s)) { _ in
+            let scale = s / defaultPlaySize
             color.setFill()
-            let bar1 = CGRect(x: 12, y: 10, width: 7, height: 24)
-            let bar2 = CGRect(x: 25, y: 10, width: 7, height: 24)
-            UIBezierPath(roundedRect: bar1, cornerRadius: 2).fill()
-            UIBezierPath(roundedRect: bar2, cornerRadius: 2).fill()
-        }
-    }
-
-    static func rewind10() -> UIImage {
-        playerIcon("icon_Gobackward_10", size: 36)
-    }
-
-    static func forward10() -> UIImage {
-        playerIcon("icon_Goforward_10", size: 36)
-    }
-
-    static func settings() -> UIImage {
-        playerIcon("icon_Gear", size: 26)
-    }
-
-    static func pip() -> UIImage {
-        if #available(iOS 13.0, *),
-           let img = UIImage(systemName: "pip.enter") {
-            return img.withTintColor(
-                .white,
-                renderingMode: .alwaysOriginal
+            let bar1 = CGRect(
+                x: 12 * scale,
+                y: 10 * scale,
+                width: 7 * scale,
+                height: 24 * scale
             )
-        }
-        return pipFallback()
-    }
-
-    static func pipExit() -> UIImage {
-        if #available(iOS 13.0, *),
-           let img = UIImage(systemName: "pip.exit") {
-            return img.withTintColor(
-                .white,
-                renderingMode: .alwaysOriginal
+            let bar2 = CGRect(
+                x: 25 * scale,
+                y: 10 * scale,
+                width: 7 * scale,
+                height: 24 * scale
             )
+            UIBezierPath(roundedRect: bar1, cornerRadius: 2 * scale).fill()
+            UIBezierPath(roundedRect: bar2, cornerRadius: 2 * scale).fill()
         }
-        return pip()
+        vectorIconCache[key] = img
+        return img
     }
 
-    static func fullscreen(isFullscreen: Bool) -> UIImage {
-        draw(size: CGSize(width: 24, height: 24)) { _ in
+    static func rewind10(size: CGFloat = defaultSkipSize) -> UIImage {
+        playerIcon("icon_Gobackward_10", size: max(16, size))
+    }
+
+    static func forward10(size: CGFloat = defaultSkipSize) -> UIImage {
+        playerIcon("icon_Goforward_10", size: max(16, size))
+    }
+
+    static func settings(size: CGFloat = defaultSettingsSize) -> UIImage {
+        playerIcon("icon_Gear", size: max(14, size))
+    }
+
+    static func pip(size: CGFloat = defaultPipSize) -> UIImage {
+        let s = max(14, size)
+        if #available(iOS 13.0, *) {
+            let config = UIImage.SymbolConfiguration(pointSize: s * 0.72, weight: .medium)
+            if let img = UIImage(systemName: "pip.enter", withConfiguration: config) {
+                return img.withTintColor(.white, renderingMode: .alwaysOriginal)
+            }
+        }
+        return pipFallback(size: s)
+    }
+
+    static func pipExit(size: CGFloat = defaultPipSize) -> UIImage {
+        let s = max(14, size)
+        if #available(iOS 13.0, *) {
+            let config = UIImage.SymbolConfiguration(pointSize: s * 0.72, weight: .medium)
+            if let img = UIImage(systemName: "pip.exit", withConfiguration: config) {
+                return img.withTintColor(.white, renderingMode: .alwaysOriginal)
+            }
+        }
+        return pip(size: s)
+    }
+
+    static func fullscreen(
+        isFullscreen: Bool,
+        size: CGFloat = defaultFullscreenSize
+    ) -> UIImage {
+        let s = max(14, size)
+        return draw(size: CGSize(width: s, height: s)) { _ in
+            let scale = s / defaultFullscreenSize
             UIColor.white.setStroke()
-            let arm: CGFloat = 5
-            let lineWidth: CGFloat = 2
+            let arm: CGFloat = 5 * scale
+            let lineWidth: CGFloat = 2 * scale
             let corners = isFullscreen
-                ? collapsedCorners()
-                : expandedCorners(arm: arm)
+                ? collapsedCorners(scale: scale)
+                : expandedCorners(arm: arm, scale: scale)
             drawCorners(corners, lineWidth: lineWidth)
         }
     }
+
+    /// Renders a named template/asset icon into a square of `size`.
+    /// Used by watch action bar (like / share / save / download).
+    /// Cached per (name, rounded size) — never re-rasterize every layout pass
+    /// (that caused 0x8BADF00D watchdog + 1.2GB CG Raster Data).
+    static func actionBarIcon(named name: String, size: CGFloat) -> UIImage? {
+        let s = max(12, size).rounded()
+        let key = "\(name)#\(Int(s))"
+        if let cached = actionBarIconCache[key] {
+            return cached
+        }
+        guard let img = UIImage(named: name) else { return nil }
+        let iconSize = CGSize(width: s, height: s)
+        let rendered = UIGraphicsImageRenderer(size: iconSize).image { _ in
+            img.draw(in: CGRect(origin: .zero, size: iconSize))
+        }.withRenderingMode(.alwaysTemplate)
+        actionBarIconCache[key] = rendered
+        return rendered
+    }
+
+    /// Clear raster caches (tests / memory pressure).
+    static func clearActionBarIconCache() {
+        actionBarIconCache.removeAll(keepingCapacity: false)
+        vectorIconCache.removeAll(keepingCapacity: false)
+        playerAssetIconCache.removeAll(keepingCapacity: false)
+    }
+
+    private static var actionBarIconCache: [String: UIImage] = [:]
+    private static var vectorIconCache: [String: UIImage] = [:]
+    private static var playerAssetIconCache: [String: UIImage] = [:]
 }
 
 // MARK: - Private helpers
 
 extension PlayerIcons {
-    private static func pipFallback() -> UIImage {
-        draw(size: CGSize(width: 26, height: 26)) { _ in
+    private static func pipFallback(size: CGFloat) -> UIImage {
+        let s = max(14, size)
+        return draw(size: CGSize(width: s, height: s)) { _ in
+            let scale = s / defaultPipSize
             UIColor.white.setStroke()
-            let outerRect = CGRect(x: 2, y: 5, width: 22, height: 16)
-            let outer = UIBezierPath(roundedRect: outerRect, cornerRadius: 2)
-            outer.lineWidth = 1.5
+            let outerRect = CGRect(
+                x: 2 * scale,
+                y: 5 * scale,
+                width: 22 * scale,
+                height: 16 * scale
+            )
+            let outer = UIBezierPath(roundedRect: outerRect, cornerRadius: 2 * scale)
+            outer.lineWidth = 1.5 * scale
             outer.stroke()
             UIColor.white.setFill()
-            let innerRect = CGRect(x: 12, y: 11, width: 10, height: 7)
-            UIBezierPath(roundedRect: innerRect, cornerRadius: 1).fill()
+            let innerRect = CGRect(
+                x: 12 * scale,
+                y: 11 * scale,
+                width: 10 * scale,
+                height: 7 * scale
+            )
+            UIBezierPath(roundedRect: innerRect, cornerRadius: 1 * scale).fill()
         }
     }
 
+    /// Asset → square template; **cached** (layout thrash was 0x8BADF00D).
     private static func playerIcon(_ name: String, size: CGFloat) -> UIImage {
-        let iconSize = CGSize(width: size, height: size)
+        let s = max(12, size).rounded()
+        let key = "\(name)#\(Int(s))"
+        if let cached = playerAssetIconCache[key] {
+            return cached
+        }
+        let iconSize = CGSize(width: s, height: s)
         let renderer = UIGraphicsImageRenderer(size: iconSize)
         let img = renderer.image { _ in
             UIColor.white.setFill()
             UIImage(named: name)?.draw(
                 in: CGRect(origin: .zero, size: iconSize)
             )
-        }
-        return img.withRenderingMode(.alwaysOriginal)
+        }.withRenderingMode(.alwaysOriginal)
+        playerAssetIconCache[key] = img
+        return img
     }
 
     private static func draw(size: CGSize, block: (CGContext) -> Void) -> UIImage {
@@ -119,52 +214,55 @@ extension PlayerIcons {
         return image.withRenderingMode(.alwaysOriginal)
     }
 
-    private static func expandedCorners(arm: CGFloat) -> [CornerPoints] {
+    private static func expandedCorners(
+        arm: CGFloat,
+        scale: CGFloat
+    ) -> [CornerPoints] {
         [
             CornerPoints(
-                corner: CGPoint(x: 3, y: 3),
-                horizontal: CGPoint(x: 3 + arm, y: 3),
-                vertical: CGPoint(x: 3, y: 3 + arm)
+                corner: CGPoint(x: 3 * scale, y: 3 * scale),
+                horizontal: CGPoint(x: 3 * scale + arm, y: 3 * scale),
+                vertical: CGPoint(x: 3 * scale, y: 3 * scale + arm)
             ),
             CornerPoints(
-                corner: CGPoint(x: 21, y: 3),
-                horizontal: CGPoint(x: 21 - arm, y: 3),
-                vertical: CGPoint(x: 21, y: 3 + arm)
+                corner: CGPoint(x: 21 * scale, y: 3 * scale),
+                horizontal: CGPoint(x: 21 * scale - arm, y: 3 * scale),
+                vertical: CGPoint(x: 21 * scale, y: 3 * scale + arm)
             ),
             CornerPoints(
-                corner: CGPoint(x: 3, y: 21),
-                horizontal: CGPoint(x: 3 + arm, y: 21),
-                vertical: CGPoint(x: 3, y: 21 - arm)
+                corner: CGPoint(x: 3 * scale, y: 21 * scale),
+                horizontal: CGPoint(x: 3 * scale + arm, y: 21 * scale),
+                vertical: CGPoint(x: 3 * scale, y: 21 * scale - arm)
             ),
             CornerPoints(
-                corner: CGPoint(x: 21, y: 21),
-                horizontal: CGPoint(x: 21 - arm, y: 21),
-                vertical: CGPoint(x: 21, y: 21 - arm)
+                corner: CGPoint(x: 21 * scale, y: 21 * scale),
+                horizontal: CGPoint(x: 21 * scale - arm, y: 21 * scale),
+                vertical: CGPoint(x: 21 * scale, y: 21 * scale - arm)
             )
         ]
     }
 
-    private static func collapsedCorners() -> [CornerPoints] {
+    private static func collapsedCorners(scale: CGFloat) -> [CornerPoints] {
         [
             CornerPoints(
-                corner: CGPoint(x: 8, y: 8),
-                horizontal: CGPoint(x: 3, y: 8),
-                vertical: CGPoint(x: 8, y: 3)
+                corner: CGPoint(x: 8 * scale, y: 8 * scale),
+                horizontal: CGPoint(x: 3 * scale, y: 8 * scale),
+                vertical: CGPoint(x: 8 * scale, y: 3 * scale)
             ),
             CornerPoints(
-                corner: CGPoint(x: 16, y: 8),
-                horizontal: CGPoint(x: 21, y: 8),
-                vertical: CGPoint(x: 16, y: 3)
+                corner: CGPoint(x: 16 * scale, y: 8 * scale),
+                horizontal: CGPoint(x: 21 * scale, y: 8 * scale),
+                vertical: CGPoint(x: 16 * scale, y: 3 * scale)
             ),
             CornerPoints(
-                corner: CGPoint(x: 8, y: 16),
-                horizontal: CGPoint(x: 3, y: 16),
-                vertical: CGPoint(x: 8, y: 21)
+                corner: CGPoint(x: 8 * scale, y: 16 * scale),
+                horizontal: CGPoint(x: 3 * scale, y: 16 * scale),
+                vertical: CGPoint(x: 8 * scale, y: 21 * scale)
             ),
             CornerPoints(
-                corner: CGPoint(x: 16, y: 16),
-                horizontal: CGPoint(x: 21, y: 16),
-                vertical: CGPoint(x: 16, y: 21)
+                corner: CGPoint(x: 16 * scale, y: 16 * scale),
+                horizontal: CGPoint(x: 21 * scale, y: 16 * scale),
+                vertical: CGPoint(x: 16 * scale, y: 21 * scale)
             )
         ]
     }
@@ -187,7 +285,7 @@ extension PlayerIcons {
 
 extension PlayerIcons {
     static func speed() -> UIImage {
-        draw(size: CGSize(width: 24, height: 24)) { _ in
+        return draw(size: CGSize(width: 24, height: 24)) { _ in
             let attrs: [NSAttributedString.Key: Any] = [
                 .font: UIFont.boldSystemFont(ofSize: 11),
                 .foregroundColor: UIColor.white
@@ -207,7 +305,7 @@ extension PlayerIcons {
 
 extension PlayerIcons {
     private static func skipIcon(forward: Bool) -> UIImage {
-        draw(size: CGSize(width: 44, height: 44)) { _ in
+        return draw(size: CGSize(width: 44, height: 44)) { _ in
             let cx: CGFloat = 22
             let cy: CGFloat = 21
             let radius: CGFloat = 12

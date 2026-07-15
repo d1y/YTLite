@@ -55,6 +55,13 @@ class VideoCell: UICollectionViewCell {
             layoutGrid(cellWidth: cellWidth)
         }
         layoutProgress()
+        // After frames settle — force true circle (never ellipse).
+        if !channelAvatarView.isHidden {
+            let side = min(channelAvatarView.bounds.width, channelAvatarView.bounds.height)
+            if side > 1 {
+                CircleAvatarStyle.applySquareCircle(to: channelAvatarView, side: side)
+            }
+        }
     }
 
     private func layoutProgress() {
@@ -128,8 +135,7 @@ extension VideoCell {
     }
 
     private func setupInfoArea() {
-        channelAvatarView.layer.cornerRadius = VideoCell.avatarSize / 2
-        channelAvatarView.layer.masksToBounds = true
+        CircleAvatarStyle.apply(to: channelAvatarView, side: VideoCell.avatarSize)
         channelAvatarView.isUserInteractionEnabled = true
         channelAvatarView.maxPixelSize = 96
         contentView.addSubview(channelAvatarView)
@@ -189,6 +195,7 @@ extension VideoCell {
         let afterTitle = titleLabel.frame.maxY + 8
         channelAvatarView.isHidden = false
         channelAvatarView.frame = CGRect(x: textX, y: afterTitle, width: avatarSz, height: avatarSz)
+        CircleAvatarStyle.apply(to: channelAvatarView, side: avatarSz)
         let labelX = textX + avatarSz + 8
         let labelW = cellWidth - labelX - hPad
         let channelY = afterTitle + (avatarSz - 14) / 2
@@ -252,6 +259,7 @@ extension VideoCell {
         if !channelAvatarView.isHidden {
             let sz = avatarSz
             channelAvatarView.frame = CGRect(x: avatarX, y: avatarY, width: sz, height: sz)
+            CircleAvatarStyle.apply(to: channelAvatarView, side: sz)
         }
         let titleTop = thumbH + VideoCell.hPad
         let titleH = computeTitleHeight(for: textW)
@@ -274,7 +282,10 @@ extension VideoCell {
     @objc
     private func applyTheme() {
         let theme = ThemeManager.shared
-        backgroundColor = theme.surface
+        // Match page background so related rail is seamless in dark mode
+        // (surface gray blocks looked like unthemed light cells).
+        backgroundColor = theme.background
+        contentView.backgroundColor = theme.background
         titleLabel.textColor = theme.primaryText
         channelLabel.textColor = theme.secondaryText
         metaLabel.textColor = theme.secondaryText
@@ -304,6 +315,8 @@ extension VideoCell {
             viewCount: video.viewCount,
             publishedAt: video.publishedAt
         )
+        // Cell + channel labels act as links on Mac → pointer cursor.
+        MacPointerHover.install(on: [self, channelAvatarView, channelLabel, titleLabel])
         VideoCardHelper.loadChannelAvatar(
             for: video,
             into: channelAvatarView

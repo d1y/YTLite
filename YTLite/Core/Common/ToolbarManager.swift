@@ -23,12 +23,28 @@ final class ToolbarManager {
     // MARK: - Install buttons in a view controller
 
     func install(in vc: UIViewController) {
+        // macOS: actions live in the window title bar trailing chrome
+        // (MacActionChromeBar). Never install nav right items — they render
+        // as a second glass pill lower than the real title-bar slot.
+        if PlatformStyle.prefersMacTitlebarActions {
+            vc.navigationItem.rightBarButtonItems = nil
+            vc.navigationItem.rightBarButtonItem = nil
+            return
+        }
+
+        let tint: UIColor
+        if #available(iOS 13.0, *) {
+            tint = ThemeManager.shared.isDark ? .white : .label
+        } else {
+            tint = ThemeManager.shared.isDark ? .white : .darkGray
+        }
         let searchBtn = UIBarButtonItem(
             image: resized("icon_Magnifyingglass", size: 22),
             style: .plain,
             target: vc,
             action: #selector(UIViewController.toolbarOpenSearch)
         )
+        searchBtn.tintColor = tint
 
         let settingsBtn = UIBarButtonItem(
             image: resized("icon_Gear", size: 22),
@@ -36,6 +52,7 @@ final class ToolbarManager {
             target: vc,
             action: #selector(UIViewController.toolbarOpenSettings)
         )
+        settingsBtn.tintColor = tint
 
         let profileBtn = makeProfileButton(
             target: vc,
@@ -55,7 +72,10 @@ final class ToolbarManager {
         let button = ProfileAvatarButton()
         button.refresh()
         button.addTarget(target, action: action, for: .touchUpInside)
-        return UIBarButtonItem(customView: button)
+        // Rigid square host — UIBarButtonItem glass chrome stretches bare
+        // customViews into ovals; a fixed host keeps a true circle.
+        let host = ProfileAvatarBarHost(avatar: button)
+        return UIBarButtonItem(customView: host)
     }
 }
 
@@ -139,7 +159,11 @@ extension UIViewController {
     @objc
     func toolbarRefreshProfileButton() {
         for item in navigationItem.rightBarButtonItems ?? [] {
-            (item.customView as? ProfileAvatarButton)?.refresh()
+            if let avatar = item.customView as? ProfileAvatarButton {
+                avatar.refresh()
+            } else if let host = item.customView as? ProfileAvatarBarHost {
+                host.avatar.refresh()
+            }
         }
     }
 
@@ -147,6 +171,7 @@ extension UIViewController {
         if let pop = alert.popoverPresentationController {
             if let btn = navigationItem.rightBarButtonItems?.first(where: {
                 $0.customView is ProfileAvatarButton
+                    || $0.customView is ProfileAvatarBarHost
             }) {
                 pop.barButtonItem = btn
             } else {
@@ -191,60 +216,245 @@ extension AppDelegate {
     }
 }
 
-// MARK: - Profile Avatar Button
+// MARK: - Profile avatar (true circle in nav bar)
 
-final class ProfileAvatarButton: UIButton {
-    private let size: CGFloat = 30
+/// Fixed square host for `UIBarButtonItem(customView:)`.
+/// iOS 26 Liquid Glass stretches bare custom views into ovals — this host
+/// refuses to change aspect ratio.
+final class ProfileAvatarBarHost: UIView {
+    let avatar: ProfileAvatarButton
+    private let side: CGFloat
 
-    override init(frame: CGRect) {
-        super.init(frame: CGRect(x: 0, y: 0, width: 30, height: 30))
-        layer.cornerRadius = size / 2
-        clipsToBounds = true
-        contentMode = .scaleAspectFill
-        imageView?.contentMode = .scaleAspectFill
-        setImage(defaultImage(), for: .normal)
-        tintColor = ThemeManager.shared.isDark ? .white : .darkGray
-        translatesAutoresizingMaskIntoConstraints = false
-        widthAnchor.constraint(equalToConstant: size).isActive = true
-        heightAnchor.constraint(equalToConstant: size).isActive = true
+    init(avatar: ProfileAvatarButton) {
+        self.avatar = avatar
+        self.side = avatar.designSize
+        super.init(frame: CGRect(x: 0, y: 0, width: side, height: side))
+        clipsToBounds = false
+        isUserInteractionEnabled = true
+        backgroundColor = .clear
+        // Frame-based: bar button customView uses the view's bounds as hit size.
+        translatesAutoresizingMaskIntoConstraints = true
+        autoresizingMask = []
+        avatar.translatesAutoresizingMaskIntoConstraints = true
+        avatar.autoresizingMask = []
+        avatar.frame = CGRect(x: 0, y: 0, width: side, height: side)
+        addSubview(avatar)
     }
 
     @available(*, unavailable)
     required init?(coder: NSCoder) {
-        fatalError("init(coder:) has not been implemented")
+        fatalError("init(coder:) is not supported")
+    }
+
+    override var intrinsicContentSize: CGSize {
+        CGSize(width: side, height: side)
+    }
+
+    override func sizeThatFits(_ size: CGSize) -> CGSize {
+        CGSize(width: side, height: side)
+    }
+
+    override var frame: CGRect {
+        get { super.frame }
+        set {
+            // Keep square even if the bar assigns a non-square frame.
+            var f = newValue
+            f.size = CGSize(width: side, height: side)
+            super.frame = f
+        }
+    }
+
+    override var bounds: CGRect {
+        get { super.bounds }
+        set {
+            super.bounds = CGRect(x: 0, y: 0, width: side, height: side)
+        }
+    }
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        // Re-pin square after bar layout passes.
+        if bounds.size != CGSize(width: side, height: side) {
+            bounds = CGRect(x: 0, y: 0, width: side, height: side)
+        }
+        avatar.frame = CGRect(x: 0, y: 0, width: side, height: side)
+        avatar.forceCircularLayout()
+    }
+}
+
+final class ProfileAvatarButton: UIButton {
+    /// Design diameter — always a perfect circle of this size.
+    let designSize: CGFloat
+    private let circleMask = CAShapeLayer()
+
+    var size: CGFloat { designSize }
+
+    convenience init() {
+        self.init(size: 30)
+    }
+
+    init(size: CGFloat) {
+        self.designSize = size
+        super.init(frame: CGRect(x: 0, y: 0, width: size, height: size))
+        contentMode = .scaleAspectFill
+        imageView?.contentMode = .scaleAspectFill
+        imageView?.clipsToBounds = true
+        imageView?.tintColor = nil
+        clipsToBounds = true
+        layer.masksToBounds = true
+        // Hard circular mask (survives non-square bounds from bar chrome).
+        circleMask.fillColor = UIColor.black.cgColor
+        layer.mask = circleMask
+        forceCircularLayout()
+        refresh()
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleThemeChange),
+            name: ThemeManager.didChangeNotification,
+            object: nil
+        )
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) is not supported")
+    }
+
+    override var intrinsicContentSize: CGSize {
+        CGSize(width: designSize, height: designSize)
+    }
+
+    override func sizeThatFits(_ size: CGSize) -> CGSize {
+        CGSize(width: designSize, height: designSize)
+    }
+
+    override var frame: CGRect {
+        get { super.frame }
+        set {
+            var f = newValue
+            f.size = CGSize(width: designSize, height: designSize)
+            super.frame = f
+        }
+    }
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        forceCircularLayout()
+    }
+
+    /// Call after any bar layout — enforces perfect circle of `designSize`.
+    func forceCircularLayout() {
+        let side = designSize
+        if bounds.size != CGSize(width: side, height: side) {
+            bounds = CGRect(origin: .zero, size: CGSize(width: side, height: side))
+        }
+        let oval = CGRect(x: 0, y: 0, width: side, height: side)
+        circleMask.frame = oval
+        circleMask.path = UIBezierPath(ovalIn: oval).cgPath
+        layer.cornerRadius = side / 2
+        layer.masksToBounds = true
+        if #available(iOS 13.0, *) {
+            layer.cornerCurve = .circular
+        }
+        if let imageView {
+            imageView.frame = oval
+            imageView.contentMode = .scaleAspectFill
+            imageView.clipsToBounds = true
+            imageView.layer.cornerRadius = side / 2
+            imageView.layer.masksToBounds = true
+            if #available(iOS 13.0, *) {
+                imageView.layer.cornerCurve = .circular
+            }
+        }
+    }
+
+    @objc
+    private func handleThemeChange() {
+        refresh()
+    }
+
+    private var iconTint: UIColor {
+        if #available(iOS 13.0, *) {
+            return ThemeManager.shared.isDark ? .white : .label
+        }
+        return ThemeManager.shared.isDark ? .white : .darkGray
     }
 
     func refresh() {
-        tintColor = ThemeManager.shared.isDark ? .white : .darkGray
+        let tint = iconTint
+        tintColor = tint
+        imageView?.tintColor = tint
         if let avatar = UserProfileStore.shared.avatarImage {
-            setImage(avatar, for: .normal)
+            // Crop real photos to a square first so aspectFill can't oval-stretch.
+            setImage(
+                Self.circularCropped(avatar, side: designSize)
+                    .withRenderingMode(.alwaysOriginal),
+                for: .normal
+            )
         } else {
-            setImage(defaultImage(), for: .normal)
+            setImage(defaultImage(tint: tint), for: .normal)
+        }
+        forceCircularLayout()
+    }
+
+    /// Center-crop to square then scale — prevents elliptical display of photos.
+    static func circularCropped(_ image: UIImage, side: CGFloat) -> UIImage {
+        let pixelSide = max(side, 1) * UIScreen.main.scale
+        let imgSize = image.size
+        guard imgSize.width > 0, imgSize.height > 0 else {
+            return image
+        }
+        let minSide = min(imgSize.width, imgSize.height)
+        let origin = CGPoint(
+            x: (imgSize.width - minSide) / 2,
+            y: (imgSize.height - minSide) / 2
+        )
+        let cropRect = CGRect(origin: origin, size: CGSize(width: minSide, height: minSide))
+        guard let cg = image.cgImage?.cropping(to: CGRect(
+            x: cropRect.origin.x * image.scale,
+            y: cropRect.origin.y * image.scale,
+            width: cropRect.size.width * image.scale,
+            height: cropRect.size.height * image.scale
+        )) else {
+            return image
+        }
+        let square = UIImage(cgImage: cg, scale: image.scale, orientation: image.imageOrientation)
+        let outSize = CGSize(width: side, height: side)
+        let renderer = UIGraphicsImageRenderer(size: outSize)
+        return renderer.image { _ in
+            let path = UIBezierPath(ovalIn: CGRect(origin: .zero, size: outSize))
+            path.addClip()
+            square.draw(in: CGRect(origin: .zero, size: outSize))
         }
     }
 
-    private func defaultImage() -> UIImage? {
-        if let asset = UIImage(named: "icon_person_fill") {
-            return asset
-        }
+    private func defaultImage(tint: UIColor) -> UIImage? {
         if #available(iOS 13, *) {
-            let config = UIImage.SymbolConfiguration(pointSize: size, weight: .light)
-            return UIImage(
-                systemName: "person.circle.fill",
+            let config = UIImage.SymbolConfiguration(pointSize: designSize * 0.9, weight: .regular)
+            if let symbol = UIImage(
+                systemName: "person.crop.circle.fill",
                 withConfiguration: config
-            )
+            ) {
+                return symbol.withRenderingMode(.alwaysTemplate)
+            }
         }
-        let color = ThemeManager.shared.isDark ? UIColor.white : UIColor.darkGray
-        return drawPersonPlaceholder(color: color)
+        if let asset = UIImage(named: "icon_person_fill") {
+            let out = CGSize(width: designSize, height: designSize)
+            let renderer = UIGraphicsImageRenderer(size: out)
+            return renderer.image { _ in
+                asset.draw(in: CGRect(origin: .zero, size: out))
+            }.withRenderingMode(.alwaysTemplate)
+        }
+        return drawPersonPlaceholder(color: tint)
     }
 
     private func drawPersonPlaceholder(color: UIColor) -> UIImage {
-        let side = size
+        let side = designSize
         let renderer = UIGraphicsImageRenderer(size: CGSize(width: side, height: side))
         return renderer.image { ctx in
             let cgCtx = ctx.cgContext
             color.setStroke()
-            color.withAlphaComponent(0.25).setFill()
+            color.withAlphaComponent(0.2).setFill()
             cgCtx.setLineWidth(1.5)
             cgCtx.addEllipse(in: CGRect(x: 1, y: 1, width: side - 2, height: side - 2))
             cgCtx.drawPath(using: .fillStroke)
@@ -268,6 +478,6 @@ final class ProfileAvatarButton: UIButton {
             cgCtx.clip()
             cgCtx.fill(CGRect(x: 0, y: 0, width: side, height: side))
         }
-        .withRenderingMode(.alwaysOriginal)
+        .withRenderingMode(.alwaysTemplate)
     }
 }

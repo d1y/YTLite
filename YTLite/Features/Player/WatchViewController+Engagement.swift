@@ -57,19 +57,37 @@ extension WatchViewController {
         dislikeCountLabel.textColor = theme.secondaryText
         descriptionButton.setTitleColor(theme.secondaryText, for: .normal)
         loadMoreCommentsButton.setTitleColor(
-            theme.isDark ? .white : theme.accent,
+            theme.isDark ? theme.primaryText : theme.accent,
             for: .normal
         )
         for btn in [likeButton, dislikeButton, shareButton, saveButton, downloadButton] {
             btn.tintColor = theme.primaryText
         }
+        // Action-bar caption labels live in stacks under each button.
+        for case let stack as UIStackView in actionBar.arrangedSubviews {
+            for case let label as UILabel in stack.arrangedSubviews {
+                label.textColor = theme.secondaryText
+            }
+        }
         playerContainer.backgroundColor = .black
-        playerStatusLabel.textColor = .lightGray
+        playerStatusLabel.textColor = theme.secondaryText
+        if let nav = navigationController {
+            GlassChrome.apply(to: nav.navigationBar, theme: theme)
+            nav.view.backgroundColor = theme.background
+        }
         applyThemeToSubscribeButton()
+        if PlatformStyle.isMac, macCloseControlInstalled {
+            updateMacCloseControlAppearance()
+        }
         if isViewLoaded, navigationController != nil {
             setupNavigationBar()
         }
         updateLikeDislikeUI()
+        // Rebuild comments so author/meta colors pick up the new palette.
+        if !comments.isEmpty || isLoadingComments {
+            renderComments()
+        }
+        relatedCollectionView.reloadData()
     }
 
     func applyThemeToSubscribeButton() {

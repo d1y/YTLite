@@ -43,25 +43,10 @@ final class RotatingNavigationController: UINavigationController {
     /// One bar configuration for every navigation bar in the app — bars
     /// with differing appearance setups use different item-layout metrics
     /// (visibly different chevron insets), so the bar styles itself here
-    /// instead of per screen.
+    /// instead of per screen. Uses Liquid Glass when available.
     @objc
     private func applyBarTheme() {
-        let theme = ThemeManager.shared
-        navigationBar.tintColor = theme.isDark ? .white : theme.accent
-        if #available(iOS 13.0, *) {
-            let appearance = UINavigationBarAppearance()
-            appearance.configureWithOpaqueBackground()
-            appearance.backgroundColor = theme.surface
-            appearance.titleTextAttributes = [.foregroundColor: theme.primaryText]
-            navigationBar.standardAppearance = appearance
-            navigationBar.scrollEdgeAppearance = appearance
-            navigationBar.compactAppearance = appearance
-        } else {
-            navigationBar.barTintColor = theme.surface
-            navigationBar.isTranslucent = false
-            navigationBar.barStyle = theme.barStyle
-            navigationBar.titleTextAttributes = [.foregroundColor: theme.primaryText]
-        }
+        GlassChrome.apply(to: navigationBar)
     }
 
     override func pushViewController(
@@ -71,14 +56,22 @@ final class RotatingNavigationController: UINavigationController {
         // `topViewController == nil` means this is the root being installed —
         // it gets no back button. Screens that manage their own left item
         // (e.g. the watch screen) are left alone.
+        // Mac Search owns a custom circular back — do not inject NavChevron.
+        let isMacSearch = PlatformStyle.isMac
+            && viewController is SearchViewController
         if topViewController != nil,
-           viewController.navigationItem.leftBarButtonItem == nil {
+           viewController.navigationItem.leftBarButtonItem == nil,
+           !isMacSearch {
             viewController.navigationItem.hidesBackButton = true
             viewController.navigationItem.leftBarButtonItem = NavChevron.barButton(
                 kind: .back,
                 target: self,
                 action: #selector(popTapped)
             )
+        }
+        if isMacSearch {
+            viewController.navigationItem.hidesBackButton = true
+            viewController.navigationItem.leftBarButtonItem = nil
         }
         super.pushViewController(viewController, animated: animated)
     }
@@ -121,6 +114,27 @@ extension RotatingNavigationController: UINavigationControllerDelegate {
         willShow viewController: UIViewController,
         animated: Bool
     ) {
+        // Mac: hide empty root nav bars (kills huge black band under title
+        // tabs) and hide bar on Search (custom chrome). Show for pushes.
+        // Modal sheets (Settings) and Watch (back/minimize) always keep the bar.
+        if PlatformStyle.isMac {
+            let isRoot = navigationController.viewControllers.first
+                === viewController
+            let isSearch = viewController is SearchViewController
+            let isWatch = viewController is WatchViewController
+            let isModal = navigationController.presentingViewController != nil
+            let hide = ResponsiveMetrics.macNavigationBarHidden(
+                isRoot: isRoot,
+                isSearchScreen: isSearch,
+                isPresentedModally: isModal,
+                isWatchScreen: isWatch
+            )
+            navigationController.setNavigationBarHidden(hide, animated: animated)
+            if !hide {
+                navigationController.navigationBar.isHidden = false
+                GlassChrome.apply(to: navigationController.navigationBar)
+            }
+        }
         Self.realignChevron(of: viewController)
         guard let coordinator = navigationController.transitionCoordinator else {
             return

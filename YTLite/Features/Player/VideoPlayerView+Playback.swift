@@ -122,8 +122,13 @@ extension VideoPlayerView {
             \.rate,
             options: [.new]
         ) { [weak self] _, _ in
-            DispatchQueue.main.async {
+            // Prefer main-thread sync when already on main so pause icon is instant.
+            if Thread.isMainThread {
                 self?.updatePlayPauseIcon()
+            } else {
+                DispatchQueue.main.async {
+                    self?.updatePlayPauseIcon()
+                }
             }
         }
     }
@@ -133,17 +138,24 @@ extension VideoPlayerView {
             \.timeControlStatus,
             options: [.new]
         ) { [weak self] observed, _ in
-            DispatchQueue.main.async {
+            let apply: () -> Void = {
                 switch observed.timeControlStatus {
                 case .waitingToPlayAtSpecifiedRate:
+                    // Buffering on resume — spinner only. Keep center transport
+                    // visible so play→pause stays tappable (hiding it felt laggy).
                     self?.spinner.startAnimating()
-                    self?.setCenter(hidden: true)
+                    self?.setCenter(hidden: false)
                 case .playing, .paused:
                     self?.spinner.stopAnimating()
                     self?.setCenter(hidden: false)
                 @unknown default:
                     break
                 }
+            }
+            if Thread.isMainThread {
+                apply()
+            } else {
+                DispatchQueue.main.async(execute: apply)
             }
         }
     }

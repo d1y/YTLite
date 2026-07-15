@@ -1,0 +1,40 @@
+/* Tabs */
+"tab.home" = "首页";
+"tab.subscriptions" = "订阅";
+"tab.library" = "媒体库";
+
+/* Library segments (accessibility + pre-iOS13 fallback) */
+"library.history" = "历史";
+"library.downloads" = "下载";
+"library.playlists" = "播放列表";
+
+
+/* Common */
+"common.done" = "完成";
+"common.cancel" = "取消";
+
+/* Settings */
+"settings.title" = "设置";
+"settings.theme" = "主题";
+"settings.theme.dark" = "深色";
+"settings.theme.light" = "浅色";
+"settings.theme.auto" = "自动";
+"settings.language" = "语言";
+"settings.language.system" = "跟随系统";
+"settings.language.english" = "English";
+"settings.language.chinese" = "简体中文";
+"settings.language.footer" = "应用于应用内界面文案。部分系统弹窗仍跟随系统语言。";
+"settings.playback" = "播放";
+"settings.quality" = "默认画质";
+"settings.background_playback" = "后台播放";
+"settings.pip" = "画中画";
+"settings.auto_pip" = "自动画中画";
+"settings.auto_pip.footer" = "当应用进入后台且视频正在播放时，自动进入画中画。";
+"settings.hide_status_bar" = "全屏时隐藏状态栏";
+"settings.show_shorts" = "在订阅中显示 Shorts";
+"settings.cache" = "缓存";
+"settings.feed_cache" = "订阅源缓存";
+"settings.image_cache" = "图片缓存";
+"settings.clear_cache" = "清除全部缓存";
+"settings.cancel" = "取消";
+"settings.done" = "完成";

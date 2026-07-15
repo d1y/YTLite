@@ -5,7 +5,8 @@ import UIKit
 final class SettingsViewController: UIViewController {
     private enum Row {
         case theme, autoDarkStart, autoDarkEnd
-        case quality, backgroundPlayback, pipEnabled, hideStatusBar, showShorts
+        case language
+        case quality, backgroundPlayback, pipEnabled, autoPiP, hideStatusBar, showShorts
         case persistCache, feedCacheDays
         case imageCacheEnabled, imageCacheDays
         case clearCache, rydEnabled
@@ -50,16 +51,29 @@ final class SettingsViewController: UIViewController {
             themeRows.append(contentsOf: [.autoDarkStart, .autoDarkEnd])
         }
         return [
-            Section(header: "Theme", footer: themeFooter, rows: themeRows),
             Section(
-                header: "Playback",
-                footer: nil,
+                header: L10n.tr(L10n.Settings.theme),
+                footer: themeFooter,
+                rows: themeRows
+            ),
+            Section(
+                header: L10n.tr(L10n.Settings.language),
+                footer: L10n.tr(L10n.Settings.languageFooter),
+                rows: [.language]
+            ),
+            Section(
+                header: L10n.tr(L10n.Settings.playback),
+                footer: L10n.tr(L10n.Settings.autoPipFooter),
                 rows: [
-                    .quality, .backgroundPlayback, .pipEnabled,
+                    .quality, .backgroundPlayback, .pipEnabled, .autoPiP,
                     .hideStatusBar, .showShorts
                 ]
             ),
-            Section(header: "Cache", footer: nil, rows: cacheRows),
+            Section(
+                header: L10n.tr(L10n.Settings.cache),
+                footer: nil,
+                rows: cacheRows
+            ),
             Section(header: "Return YouTube Dislike", footer: rydFooter, rows: [.rydEnabled]),
             Section(header: "SponsorBlock", footer: sbFooter, rows: sponsorBlockRows),
             Section(
@@ -113,12 +127,8 @@ final class SettingsViewController: UIViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        title = "Settings"
-        navigationItem.rightBarButtonItem = UIBarButtonItem(
-            barButtonSystemItem: .done,
-            target: self,
-            action: #selector(dismiss(_:))
-        )
+        title = L10n.tr(L10n.Settings.title)
+        installDoneButton()
         setupTableView()
         applyTheme()
         NotificationCenter.default.addObserver(
@@ -127,6 +137,31 @@ final class SettingsViewController: UIViewController {
             name: ThemeManager.didChangeNotification,
             object: nil
         )
+    }
+
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        // Mac modal: never leave the sheet without a close control
+        // (root nav hide used to strip Done on Catalyst).
+        installDoneButton()
+        navigationController?.setNavigationBarHidden(false, animated: animated)
+        navigationController?.navigationBar.isHidden = false
+        if let nav = navigationController {
+            GlassChrome.apply(to: nav.navigationBar)
+        }
+    }
+
+    private func installDoneButton() {
+        let done = UIBarButtonItem(
+            title: L10n.tr(L10n.Common.done),
+            style: .done,
+            target: self,
+            action: #selector(closeSettings)
+        )
+        done.accessibilityIdentifier = "settings.done"
+        navigationItem.rightBarButtonItem = done
+        // Ensure bar items are not cleared by Mac chrome strippers.
+        navigationItem.hidesBackButton = true
     }
 
     private func setupTableView() {
@@ -148,12 +183,21 @@ final class SettingsViewController: UIViewController {
         let theme = ThemeManager.shared
         view.backgroundColor = theme.background
         tableView.backgroundColor = theme.background
-        tableView.separatorColor  = theme.separator
+        tableView.separatorColor = theme.separator
+        if let nav = navigationController {
+            GlassChrome.apply(to: nav.navigationBar, theme: theme)
+            nav.navigationBar.tintColor = theme.isDark ? .white : theme.accent
+        }
+        navigationItem.rightBarButtonItem?.tintColor = theme.isDark
+            ? .white
+            : theme.accent
         tableView.reloadData()
     }
 
     @objc
-    private func dismiss(_ sender: Any) { dismiss(animated: true) }
+    private func closeSettings() {
+        dismiss(animated: true)
+    }
 }
 
 // MARK: - Data source / delegate
@@ -175,6 +219,8 @@ extension SettingsViewController: UITableViewDataSource, UITableViewDelegate {
         switch sections[indexPath.section].rows[indexPath.row] {
         case .theme:
             return makeThemeCell()
+        case .language:
+            return makeLanguageCell()
         case .autoDarkStart:
             return makeDisclosureCell(
                 "Dark Theme From",
@@ -186,29 +232,48 @@ extension SettingsViewController: UITableViewDataSource, UITableViewDelegate {
                 value: hourLabel(ThemeManager.shared.autoDarkEndHour)
             )
         case .quality:
-            return makeDisclosureCell("Default Quality", value: VideoQualityStore.displayName)
+            return makeDisclosureCell(
+                L10n.tr(L10n.Settings.quality),
+                value: VideoQualityStore.displayName
+            )
         case .backgroundPlayback:
             let bgOn = BackgroundPlaybackService.isEnabled
-            return makeToggleCell("Background Playback", isOn: bgOn) {
+            return makeToggleCell(
+                L10n.tr(L10n.Settings.backgroundPlayback),
+                isOn: bgOn
+            ) {
                 BackgroundPlaybackService.isEnabled = $0
                 BackgroundPlaybackService.apply()
             }
         case .pipEnabled:
             let key = UserDefaultsKeys.Player.pipEnabled
             let isOn = UserDefaults.standard.object(forKey: key) as? Bool ?? true
-            return makeToggleCell("Picture-in-Picture", isOn: isOn) {
+            return makeToggleCell(L10n.tr(L10n.Settings.pip), isOn: isOn) {
                 UserDefaults.standard.set($0, forKey: key)
+            }
+        case .autoPiP:
+            return makeToggleCell(
+                L10n.tr(L10n.Settings.autoPip),
+                isOn: AutoPiPDecision.isAutoPiPEnabled
+            ) {
+                AutoPiPDecision.isAutoPiPEnabled = $0
             }
         case .hideStatusBar:
             let key = UserDefaultsKeys.Player.hideStatusBarInFullscreen
             let isOn = UserDefaults.standard.object(forKey: key) as? Bool ?? true
-            return makeToggleCell("Hide Status Bar in Fullscreen", isOn: isOn) {
+            return makeToggleCell(
+                L10n.tr(L10n.Settings.hideStatusBar),
+                isOn: isOn
+            ) {
                 UserDefaults.standard.set($0, forKey: key)
             }
         case .showShorts:
             return makeShowShortsCell()
         case .persistCache:
-            return makeToggleCell("Feed Cache", isOn: AppCache.persistenceEnabled) {
+            return makeToggleCell(
+                L10n.tr(L10n.Settings.feedCache),
+                isOn: AppCache.persistenceEnabled
+            ) {
                 AppCache.persistenceEnabled = $0
                 self.reloadCacheSection()
             }
@@ -222,7 +287,7 @@ extension SettingsViewController: UITableViewDataSource, UITableViewDelegate {
             )
         case .imageCacheEnabled:
             return makeToggleCell(
-                "Image Cache",
+                L10n.tr(L10n.Settings.imageCache),
                 isOn: ThumbnailImageView.cachingEnabled
             ) {
                 UserDefaults.standard.set(
@@ -239,7 +304,7 @@ extension SettingsViewController: UITableViewDataSource, UITableViewDelegate {
                 "Image Cache Duration", value: "\(days) day\(suffix)"
             )
         case .clearCache:
-            return makeDestructiveCell("Clear All Cache")
+            return makeDestructiveCell(L10n.tr(L10n.Settings.clearCache))
         case .rydEnabled:
             let rydOn = ReturnYouTubeDislikeService.enabled
             return makeToggleCell("Return YouTube Dislike", isOn: rydOn) {
@@ -274,6 +339,8 @@ extension SettingsViewController: UITableViewDataSource, UITableViewDelegate {
             return
         }
         switch row {
+        case .language:
+            showLanguagePicker()
         case .quality:
             showQualityPicker()
         case .feedCacheDays:
@@ -287,6 +354,52 @@ extension SettingsViewController: UITableViewDataSource, UITableViewDelegate {
         default:
             break
         }
+    }
+
+    private func makeLanguageCell() -> UITableViewCell {
+        makeDisclosureCell(
+            L10n.tr(L10n.Settings.language),
+            value: AppLanguage.selected.displayName
+        )
+    }
+
+    private func showLanguagePicker() {
+        let sheet = UIAlertController(
+            title: L10n.tr(L10n.Settings.language),
+            message: nil,
+            preferredStyle: .actionSheet
+        )
+        for language in AppLanguage.allCases {
+            let title = language.displayName
+            let action = UIAlertAction(title: title, style: .default) { [weak self] _ in
+                AppLanguage.selected = language
+                self?.reloadAfterLanguageChange()
+            }
+            sheet.addAction(action)
+        }
+        sheet.addAction(
+            UIAlertAction(
+                title: L10n.tr(L10n.Common.cancel),
+                style: .cancel
+            )
+        )
+        if let pop = sheet.popoverPresentationController {
+            pop.sourceView = view
+            pop.sourceRect = CGRect(
+                x: view.bounds.midX,
+                y: view.bounds.midY,
+                width: 0,
+                height: 0
+            )
+            pop.permittedArrowDirections = []
+        }
+        present(sheet, animated: true)
+    }
+
+    private func reloadAfterLanguageChange() {
+        title = L10n.tr(L10n.Settings.title)
+        installDoneButton()
+        tableView.reloadData()
     }
 
     private func handleDebugSelection(_ row: Row) -> Bool {
@@ -306,7 +419,7 @@ extension SettingsViewController: UITableViewDataSource, UITableViewDelegate {
     private func makeShowShortsCell() -> UITableViewCell {
         let isOn = UserDefaults.standard.bool(forKey: UserDefaultsKeys.Feed.showShorts)
         return makeToggleCell(
-            "Show YouTube Shorts in Subscriptions",
+            L10n.tr(L10n.Settings.showShorts),
             isOn: isOn
         ) {
             UserDefaults.standard.set(
@@ -352,11 +465,15 @@ extension SettingsViewController: UITableViewDataSource, UITableViewDelegate {
     private func makeThemeCell() -> UITableViewCell {
         let theme = ThemeManager.shared
         let cell = UITableViewCell(style: .default, reuseIdentifier: nil)
-        cell.textLabel?.text      = "Theme"
+        cell.textLabel?.text      = L10n.tr(L10n.Settings.theme)
         cell.textLabel?.textColor = theme.primaryText
         cell.backgroundColor      = theme.surface
         cell.selectionStyle       = .none
-        let seg = UISegmentedControl(items: ["Dark", "Light", "Auto"])
+        let seg = UISegmentedControl(items: [
+            L10n.tr(L10n.Settings.themeDark),
+            L10n.tr(L10n.Settings.themeLight),
+            L10n.tr(L10n.Settings.themeAuto)
+        ])
         let modeMap: [ThemeMode: Int] = [.dark: 0, .light: 1, .auto: 2]
         seg.selectedSegmentIndex = modeMap[theme.themeMode, default: 2]
         seg.addTarget(self, action: #selector(themeChanged(_:)), for: .valueChanged)

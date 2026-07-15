@@ -63,6 +63,32 @@ final class VideoPlayerView: UIView {
     let rewindButton = UIButton(type: .system)
     let playPauseButton = UIButton(type: .system)
     let forwardButton = UIButton(type: .system)
+    // Responsive transport metrics (updated for large Mac windows).
+    var playPauseWidthConstraint: NSLayoutConstraint?
+    var playPauseHeightConstraint: NSLayoutConstraint?
+    var rewindWidthConstraint: NSLayoutConstraint?
+    var rewindHeightConstraint: NSLayoutConstraint?
+    var forwardWidthConstraint: NSLayoutConstraint?
+    var forwardHeightConstraint: NSLayoutConstraint?
+    var skipSpacingLeadingConstraint: NSLayoutConstraint?
+    var skipSpacingTrailingConstraint: NSLayoutConstraint?
+    // Top chrome (speed / CC / PiP / settings) size + spacing.
+    var settingsWidthConstraint: NSLayoutConstraint?
+    var settingsHeightConstraint: NSLayoutConstraint?
+    var pipWidthConstraint: NSLayoutConstraint?
+    var pipHeightConstraint: NSLayoutConstraint?
+    var ccWidthConstraint: NSLayoutConstraint?
+    var ccHeightConstraint: NSLayoutConstraint?
+    var speedWidthConstraint: NSLayoutConstraint?
+    var speedHeightConstraint: NSLayoutConstraint?
+    var pipTrailingGapConstraint: NSLayoutConstraint?
+    var ccTrailingGapConstraint: NSLayoutConstraint?
+    var speedTrailingGapConstraint: NSLayoutConstraint?
+    var didInstallPointerHover = false
+    /// Last width used by `applyResponsiveControlMetrics` so play/pause /
+    /// pip icon re-renders stay at the scaled glyph size.
+    /// Start at -1 so the first real layout always applies once.
+    var lastMetricsWidth: CGFloat = -1
     let seekBar = VideoSeekBar()
     let currentTimeLabel = UILabel()
     let durationLabel = UILabel()
@@ -220,6 +246,11 @@ final class VideoPlayerView: UIView {
             width: bounds.width,
             height: 110
         )
+        // Scale + re-center transport whenever width changes (iOS + Mac).
+        let width = bounds.width
+        if width > 1, abs(width - lastMetricsWidth) > 0.5 {
+            applyResponsiveControlMetrics(forWidth: width)
+        }
     }
 }
 

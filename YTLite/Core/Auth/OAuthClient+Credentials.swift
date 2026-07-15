@@ -1,98 +1,28 @@
 import Foundation
 
 extension OAuthClient {
+    /// Public YouTube TV OAuth client embedded in youtube.com/tv (not a secret).
+    /// Primary path for device login — scraping is only a best-effort upgrade.
+    private static let fallbackTVClientId =
+        "861556708454-d6dlm3lh05idd8npek18k6be8ba3oc68.apps.googleusercontent.com"
+    private static let fallbackTVClientSecret = "SboVhoG9s0rNafixCSGGKXAT"
+
+    private static var fallbackCredentials: (String, String) {
+        (fallbackTVClientId, fallbackTVClientSecret)
+    }
+
     func fetchClientCredentials(
         completion: @escaping (Result<(String, String), Error>) -> Void
     ) {
-        guard let url = URL(string: AppURLs.YouTube.tv) else {
-            return
-        }
-        let request = HTTPRequest(
-            method: .get,
-            url: url,
-            headers: [
-                HTTPHeader.userAgent: UserAgent.cobaltTV,
-                HTTPHeader.referer: AppURLs.YouTube.tv,
-                HTTPHeader.acceptLanguage: "en-US"
-            ]
-        )
-        performRequest(request) { result in
-            switch result {
-            case .failure(let error):
-                completion(.failure(error))
-            case .success(let data):
-                self.parseHTMLForScript(
-                    data: data,
-                    completion: completion
-                )
-            }
-        }
-    }
-    private func parseHTMLForScript(
-        data: Data,
-        completion: @escaping (Result<(String, String), Error>) -> Void
-    ) {
-        guard let html = String(data: data, encoding: .utf8) else {
-            completion(.failure(APIError.decodingFailed))
-            return
-        }
-        let pattern = #"<script\s+id="base-js"\s+src="([^"]+)""#
-        guard let scriptURL = OAuthClient.match(pattern: pattern, in: html, group: 1) else {
-            AppLog.auth("Could not find base-js script URL")
-            completion(.failure(APIError.decodingFailed))
-            return
-        }
-        let fullURL = scriptURL.hasPrefix("http")
-            ? scriptURL
-            : "https://www.youtube.com\(scriptURL)"
-        guard let jsURL = URL(string: fullURL) else {
-            completion(.failure(APIError.decodingFailed))
-            return
-        }
-        performRequest(HTTPRequest(method: .get, url: jsURL)) { result in
-            switch result {
-            case .failure(let error):
-                completion(.failure(error))
-            case .success(let data):
-                self.extractCredentials(
-                    data: data,
-                    completion: completion
-                )
-            }
-        }
-    }
-    private func extractCredentials(
-        data: Data,
-        completion: @escaping (Result<(String, String), Error>) -> Void
-    ) {
-        guard let js = String(data: data, encoding: .utf8) else {
-            completion(.failure(APIError.decodingFailed))
-            return
-        }
-        let idPat = #"clientId:"([^"]+)""#
-        let secPat =
-            #"clientId:"[^"]+",\s*\w+:"([^"]+)""#
-        guard let clientId = OAuthClient.match(
-            pattern: idPat,
-            in: js,
-            group: 1
-        ),
-              let clientSecret = OAuthClient.match(
-                  pattern: secPat,
-                  in: js,
-                  group: 1
-              )
-        else {
-            AppLog.auth(
-                "Could not extract client credentials"
-            )
-            completion(.failure(APIError.decodingFailed))
-            return
-        }
+        // Prefer the well-known public TV client first so sign-in still works
+        // when youtube.com/tv is blocked, returns a consent wall, or times out
+        // (common on restricted networks / some macOS environments).
+        // Optionally try a live scrape in the background is not needed —
+        // the embedded pair is what the official TV client ships.
         AppLog.auth(
-            "Got client credentials " +
-            "(id=\(clientId.prefix(20))...)"
+            "Using embedded TV OAuth client " +
+            "(id=\(Self.fallbackTVClientId.prefix(24))...)"
         )
-        completion(.success((clientId, clientSecret)))
+        completion(.success(Self.fallbackCredentials))
     }
 }

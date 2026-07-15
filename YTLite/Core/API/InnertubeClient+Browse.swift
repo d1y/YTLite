@@ -187,8 +187,8 @@ extension InnertubeClient {
                 AppLog.innertube(
                     "executeBrowseAnonymous: empty for browseId=\(browseId)"
                 )
-                return nil
             }
+            // Empty is still a successful parse — UI can show empty/error state.
             return page
         } completion: { completion($0) }
     }
@@ -213,7 +213,12 @@ extension InnertubeClient {
             logTag: "browse(\(browseId ?? "cont"))"
         ) { json -> FeedPage? in
             let page = InnertubeClient.parsePageJSON(json)
-            return page.videos.isEmpty ? nil : page
+            if page.videos.isEmpty {
+                AppLog.innertube(
+                    "executeBrowse: empty for browseId=\(browseId ?? "cont")"
+                )
+            }
+            return page
         } completion: { completion($0) }
     }
 }

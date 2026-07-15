@@ -12,13 +12,13 @@ final class URLSessionTransport: HTTPTransport {
     /// attached, independent of the per-request `httpShouldHandleCookies` flag.
     private let cookielessSession: URLSession
 
-    init(session: URLSession = .shared) {
+    init(
+        session: URLSession = NetworkSessionFactory.shared,
+        cookielessSession: URLSession = NetworkSessionFactory.cookieless
+    ) {
+        // Both sessions are direct (empty proxy dict) so OS/TUN routing applies.
         self.session = session
-        let config = URLSessionConfiguration.ephemeral
-        config.httpCookieStorage = nil
-        config.httpShouldSetCookies = false
-        config.httpCookieAcceptPolicy = .never
-        self.cookielessSession = URLSession(configuration: config)
+        self.cookielessSession = cookielessSession
     }
 
     static func isCancelled(_ error: Error?) -> Bool {
@@ -67,9 +67,7 @@ final class URLSessionTransport: HTTPTransport {
         urlRequest.httpMethod = request.method.rawValue
         urlRequest.httpBody = request.body
         urlRequest.httpShouldHandleCookies = request.sendsCookies
-        if let timeout = request.timeout {
-            urlRequest.timeoutInterval = timeout
-        }
+        urlRequest.timeoutInterval = request.timeout ?? 30
         request.headers.forEach {
             urlRequest.setValue($1, forHTTPHeaderField: $0)
         }

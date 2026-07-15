@@ -54,7 +54,7 @@ extension OAuthClient {
         let errorType = json["error"] as? String
         if let accessToken = json["access_token"] as? String,
            let refreshToken = json["refresh_token"] as? String,
-           let expiresIn = json["expires_in"] as? Int {
+           let expiresIn = Self.jsonInt(json["expires_in"]) {
             saveNewTokens(
                 accessToken: accessToken,
                 refreshToken: refreshToken,
@@ -100,6 +100,8 @@ extension OAuthClient {
             clientSecret: config.clientSecret
         )
         tokens = newTokens
+        // Leave anonymous mode so next cold start uses isSignedIn, not isAnonymous.
+        isAnonymous = false
         saveToKeychain(newTokens)
         AppLog.auth("new token obtained")
     }

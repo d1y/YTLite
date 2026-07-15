@@ -185,7 +185,9 @@ class ThemeManager {
         background    = dark ? .black : UIColor(white: 0.96, alpha: 1)
         surface       = dark ? UIColor(white: 0.1, alpha: 1) : .white
         primaryText   = dark ? .white : UIColor(white: 0.1, alpha: 1)
-        secondaryText = dark ? UIColor(white: 0.55, alpha: 1) : UIColor(white: 0.45, alpha: 1)
+        // Dark secondary was 0.55 — too dim on pure black Mac surfaces
+        // (watch detail meta/comments looked “unthemed grey”).
+        secondaryText = dark ? UIColor(white: 0.68, alpha: 1) : UIColor(white: 0.42, alpha: 1)
         separator     = dark ? UIColor(white: 0.15, alpha: 1) : UIColor(white: 0.88, alpha: 1)
         accent        = UIColor(red: 1, green: 0, blue: 0, alpha: 1)
         durationBackground = UIColor.black.withAlphaComponent(0.8)
@@ -201,17 +203,96 @@ class ThemeManager {
     }
 
     func applyGlobal() {
+        // Sync system chrome (Liquid Glass pills, sheets, bars) with app theme.
+        // Without this, dark app content + light system glass mismatch on macOS.
+        applyInterfaceStyleToWindows()
+
         let nav = UINavigationBar.appearance()
         nav.barStyle = barStyle
         nav.tintColor = isDark ? .white : accent
         nav.titleTextAttributes = [.foregroundColor: primaryText]
+        // Liquid Glass / translucent chrome on OS versions that support it.
+        if #available(iOS 13.0, *) {
+            let navAppearance = UINavigationBarAppearance()
+            if #available(iOS 26.0, macCatalyst 26.0, *) {
+                navAppearance.configureWithTransparentBackground()
+            } else {
+                navAppearance.configureWithDefaultBackground()
+                navAppearance.backgroundColor = surface.withAlphaComponent(0.92)
+            }
+            navAppearance.titleTextAttributes = [.foregroundColor: primaryText]
+            navAppearance.largeTitleTextAttributes = [.foregroundColor: primaryText]
+            nav.standardAppearance = navAppearance
+            nav.compactAppearance = navAppearance
+            if #available(iOS 15.0, *) {
+                nav.scrollEdgeAppearance = navAppearance
+            }
+            nav.isTranslucent = true
+        }
 
         let tab = UITabBar.appearance()
         tab.barStyle = barStyle
         tab.tintColor = isDark ? .white : accent
+        if #available(iOS 13.0, *) {
+            let tabAppearance = UITabBarAppearance()
+            if #available(iOS 26.0, macCatalyst 26.0, *) {
+                tabAppearance.configureWithTransparentBackground()
+            } else {
+                tabAppearance.configureWithDefaultBackground()
+                tabAppearance.backgroundColor = surface.withAlphaComponent(0.92)
+            }
+            tab.standardAppearance = tabAppearance
+            if #available(iOS 15.0, *) {
+                tab.scrollEdgeAppearance = tabAppearance
+            }
+            tab.isTranslucent = true
+        }
 
         // Appearance only affects fields created afterwards; long-lived
         // fields (e.g. the search bar) re-apply it on theme change.
         UITextField.appearance().keyboardAppearance = isDark ? .dark : .default
+
+        if #available(iOS 13.0, *) {
+            // Match system label ink so light chrome is not forced white-on-white.
+            UIBarButtonItem.appearance().tintColor = isDark ? .white : .label
+        }
+    }
+
+    /// Map ThemeMode → window `overrideUserInterfaceStyle` so system materials
+    /// (Liquid Glass nav/tab accessory groups) follow the in-app theme.
+    /// On Mac Catalyst also sets `NSApp.appearance` so the **title bar toolbar**
+    /// (search/settings/profile) switches light/dark with the app.
+    func applyInterfaceStyleToWindows() {
+        guard #available(iOS 13.0, *) else { return }
+        // AppKit titlebar / NSToolbar first — UIKit style alone is not enough.
+        PlatformAppearance.applyAppKit(for: self)
+
+        let style: UIUserInterfaceStyle
+        switch themeMode {
+        case .dark:
+            style = .dark
+        case .light:
+            style = .light
+        case .auto:
+            style = .unspecified
+        }
+        let apply: (UIWindow?) -> Void = { window in
+            window?.overrideUserInterfaceStyle = style
+            // Use label-appropriate tint; fixed white breaks light chrome.
+            if #available(iOS 13.0, *) {
+                window?.tintColor = self.isDark ? .white : .label
+            } else {
+                window?.tintColor = self.isDark ? .white : self.accent
+            }
+        }
+        if let appDelegate = UIApplication.shared.delegate as? AppDelegate {
+            apply(appDelegate.window)
+        }
+        if #available(iOS 13.0, *) {
+            for scene in UIApplication.shared.connectedScenes {
+                guard let windowScene = scene as? UIWindowScene else { continue }
+                windowScene.windows.forEach { apply($0) }
+            }
+        }
     }
 }

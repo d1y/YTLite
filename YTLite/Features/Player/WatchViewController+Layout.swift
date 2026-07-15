@@ -8,10 +8,161 @@ extension WatchViewController {
     }
 
     func setupNavigationBar() {
-        // Bar styling (appearance, tint, margins) is owned by
-        // RotatingNavigationController so every bar lays out identically.
-        navigationController?.setNavigationBarHidden(false, animated: false)
-        updateLeftBarButton()
+        if PlatformStyle.isMac {
+            // Mac: system nav bar is useless for close (titlebar + chevron clip).
+            // Hide it and use a floating control clear of traffic lights.
+            title = nil
+            navigationItem.title = ""
+            navigationItem.largeTitleDisplayMode = .never
+            navigationItem.leftBarButtonItem = nil
+            navigationItem.hidesBackButton = true
+            navigationController?.setNavigationBarHidden(true, animated: false)
+            navigationController?.navigationBar.isHidden = true
+            installMacCloseControlIfNeeded()
+        } else {
+            navigationController?.setNavigationBarHidden(false, animated: false)
+            updateLeftBarButton()
+        }
+        MacPointerHover.install(on: [
+            likeButton, dislikeButton, shareButton,
+            saveButton, downloadButton, subscribeButton,
+            descriptionButton, loadMoreCommentsButton
+        ])
+    }
+
+    /// Circular floating close control for Mac watch (back or minimize).
+    /// Must not call `updateMacCloseControlAppearance` (that used to recurse
+    /// and stack-overflow on every watch open — SIGSEGV).
+    func installMacCloseControlIfNeeded() {
+        guard PlatformStyle.isMac else {
+            return
+        }
+        if !macCloseControlInstalled {
+            macCloseControlInstalled = true
+            configureMacCloseControlChrome()
+            pinMacCloseControl(to: view, useSafeAreaTop: true)
+        } else if macCloseControl.superview == nil {
+            pinMacCloseControl(to: view, useSafeAreaTop: true)
+        }
+        applyMacCloseControlAppearanceOnly()
+    }
+
+    private func configureMacCloseControlChrome() {
+        // Same floating style as search + playlist NavChevron.
+        NavChevron.applyMacFloatingStyle(
+            to: macCloseControl,
+            kind: .back,
+            theme: ThemeManager.shared,
+            side: NavChevron.macFloatingSide
+        )
+        macCloseControl.accessibilityIdentifier = "watch.macClose"
+        macCloseControl.addTarget(
+            self,
+            action: #selector(closeTapped),
+            for: .touchUpInside
+        )
+        MotionStyle.installPressFeedback(on: macCloseControl)
+        MacPointerHover.install(on: macCloseControl)
+    }
+
+    /// Pin floating close to a host (watch view or window during fullscreen).
+    /// Placement: **below** traffic lights, leading margin 16, icon always `<`.
+    func pinMacCloseControl(to host: UIView, useSafeAreaTop: Bool) {
+        let leading = ResponsiveMetrics.macWatchCloseLeadingInset()
+        let topConstant = ResponsiveMetrics.macWatchCloseTopInset()
+        if updateMacClosePinIfReusable(
+            host: host,
+            leading: leading,
+            topConstant: topConstant
+        ) {
+            return
+        }
+        installMacClosePin(
+            on: host,
+            leading: leading,
+            topConstant: topConstant
+        )
+        _ = useSafeAreaTop
+    }
+
+    private func updateMacClosePinIfReusable(
+        host: UIView,
+        leading: CGFloat,
+        topConstant: CGFloat
+    ) -> Bool {
+        guard macCloseControl.superview === host,
+              let leadC = macCloseLeadingConstraint,
+              let topC = macCloseTopConstraint,
+              leadC.isActive, topC.isActive
+        else {
+            return false
+        }
+        leadC.constant = leading
+        topC.constant = topConstant
+        host.bringSubviewToFront(macCloseControl)
+        macCloseControl.isHidden = false
+        return true
+    }
+
+    private func installMacClosePin(
+        on host: UIView,
+        leading: CGFloat,
+        topConstant: CGFloat
+    ) {
+        let side = ResponsiveMetrics.macSearchControlHeight()
+        if macCloseControl.superview != nil {
+            macCloseControl.removeFromSuperview()
+        }
+        macCloseControl.translatesAutoresizingMaskIntoConstraints = false
+        host.addSubview(macCloseControl)
+        NSLayoutConstraint.deactivate(
+            [
+                macCloseLeadingConstraint, macCloseTopConstraint,
+                macCloseWidthConstraint, macCloseHeightConstraint
+            ].compactMap { $0 }
+        )
+        let lead = macCloseControl.leadingAnchor.constraint(
+            equalTo: host.leadingAnchor, constant: leading
+        )
+        let top = macCloseControl.topAnchor.constraint(
+            equalTo: host.topAnchor, constant: topConstant
+        )
+        let width = macCloseControl.widthAnchor.constraint(equalToConstant: side)
+        let height = macCloseControl.heightAnchor.constraint(equalToConstant: side)
+        macCloseLeadingConstraint = lead
+        macCloseTopConstraint = top
+        macCloseWidthConstraint = width
+        macCloseHeightConstraint = height
+        NSLayoutConstraint.activate([lead, top, width, height])
+        host.bringSubviewToFront(macCloseControl)
+        macCloseControl.isHidden = false
+    }
+
+    /// Public entry: ensure installed then refresh icon (no recursion).
+    func updateMacCloseControlAppearance() {
+        guard PlatformStyle.isMac else {
+            return
+        }
+        if !macCloseControlInstalled {
+            installMacCloseControlIfNeeded()
+            return
+        }
+        applyMacCloseControlAppearanceOnly()
+    }
+
+    /// Icon / colors only — always chevron.left (`<`), playlist-matched style.
+    private func applyMacCloseControlAppearanceOnly() {
+        NavChevron.applyMacFloatingStyle(
+            to: macCloseControl,
+            kind: .back,
+            theme: ThemeManager.shared,
+            side: NavChevron.macFloatingSide
+        )
+        macCloseControl.accessibilityLabel = videoHistory.isEmpty ? "Close" : "Back"
+        if let host = macCloseControl.superview {
+            host.bringSubviewToFront(macCloseControl)
+        }
+        macCloseControl.isHidden = false
     }
 
     func addNotificationObservers() {
@@ -220,16 +371,17 @@ extension WatchViewController {
         countLabel: UILabel? = nil
     )
         -> UIStackView {
-        if let img = UIImage(named: iconName) {
-            let sz = CGSize(width: 22, height: 22)
-            let rendered = UIGraphicsImageRenderer(size: sz).image { _ in
-                img.draw(in: CGRect(origin: .zero, size: sz))
-            }
-            btn.setImage(rendered.withRenderingMode(.alwaysTemplate), for: .normal)
+        // Stash asset name so responsive typography can re-render glyphs.
+        btn.accessibilityIdentifier = iconName
+        let initial = ResponsiveMetrics.actionBarIconSize(forWidth: 390)
+        if let rendered = PlayerIcons.actionBarIcon(named: iconName, size: initial) {
+            btn.setImage(rendered, for: .normal)
         }
         btn.tintColor = ThemeManager.shared.primaryText
         btn.translatesAutoresizingMaskIntoConstraints = false
-        btn.heightAnchor.constraint(equalToConstant: 28).isActive = true
+        let height = btn.heightAnchor.constraint(equalToConstant: initial + 6)
+        height.identifier = "actionBarIconHeight"
+        height.isActive = true
         let label = countLabel ?? UILabel()
         label.font = UIFont.systemFont(ofSize: 11)
         label.textAlignment = .center
@@ -295,15 +447,16 @@ extension WatchViewController {
     /// container down via `playerTopConstraint.constant` so it always
     /// starts below the navigation bar.
     func adjustForFloatingNavBar() {
+        // Mac: no floating-nav offset — player sits under the unified title
+        // bar so the watch surface can go edge-to-edge (no black strip).
+        if PlatformStyle.isMac {
+            clearFloatingNavBarOffset()
+            return
+        }
         guard let navBar = navigationController?.navigationBar,
               !navBar.isHidden
         else {
-            if additionalSafeAreaInsets.top != 0 {
-                additionalSafeAreaInsets.top = 0
-            }
-            if playerTopConstraint?.constant != 0 {
-                playerTopConstraint?.constant = 0
-            }
+            clearFloatingNavBarOffset()
             return
         }
         let navBarBottom = navBar.convert(
@@ -318,6 +471,15 @@ extension WatchViewController {
         }
         if abs((playerTopConstraint?.constant ?? 0) - offset) > 0.5 {
             playerTopConstraint?.constant = offset
+        }
+    }
+
+    private func clearFloatingNavBarOffset() {
+        if additionalSafeAreaInsets.top != 0 {
+            additionalSafeAreaInsets.top = 0
+        }
+        if playerTopConstraint?.constant != 0 {
+            playerTopConstraint?.constant = 0
         }
     }
 }

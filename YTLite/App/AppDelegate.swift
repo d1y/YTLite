@@ -18,8 +18,12 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
             ReturnYouTubeDislikeService.shared.prepareIfNeeded()
         }
         window = UIWindow(frame: UIScreen.main.bounds)
+        // Apply theme interface style before first paint so Liquid Glass chrome
+        // matches dark/light (especially important on macOS).
+        ThemeManager.shared.applyInterfaceStyleToWindows()
         window?.rootViewController = makeSplashViewController()
         window?.makeKeyAndVisible()
+        ThemeManager.shared.applyInterfaceStyleToWindows()
 
         NotificationCenter.default.addObserver(
             self,
@@ -97,6 +101,11 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     @objc
     private func handleAuthRequired() {
         DispatchQueue.main.async { [weak self] in
+            // Race: refresh may have succeeded after the post was queued.
+            if OAuthClient.shared.isSignedIn {
+                AppLog.auth("authorizationRequired ignored — still signed in")
+                return
+            }
             guard let root = self?.window?.rootViewController,
                   !(root is AuthViewController),
                   !(root is SplashViewController),
@@ -111,6 +120,8 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
                 )
             }
             auth.onContinueAnonymously = { [weak self] in
+                // Stay on main as anonymous without wiping other state twice.
+                OAuthClient.shared.isAnonymous = true
                 root.dismiss(animated: true)
                 self?.showMain()
             }

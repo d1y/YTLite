@@ -66,8 +66,10 @@ class SubscriptionVideoCell: UITableViewCell {
     }
 
     private func setupChannelAvatar() {
-        channelAvatarView.layer.cornerRadius = 18
-        channelAvatarView.layer.masksToBounds = true
+        // True circle (r = side/2), not continuous superellipse.
+        CircleAvatarStyle.apply(to: channelAvatarView, side: 36)
+        channelAvatarView.contentMode = .scaleAspectFill
+        channelAvatarView.clipsToBounds = true
         channelAvatarView.isUserInteractionEnabled = true
         contentView.addSubview(channelAvatarView)
     }
@@ -119,6 +121,7 @@ class SubscriptionVideoCell: UITableViewCell {
         representedChannelId = video.channelId
         titleLabel.text = video.title
         channelLabel.text = video.channelName
+        MacPointerHover.install(on: [self, titleLabel, channelLabel])
         dateLabel.text = VideoCardHelper.metaText(
             viewCount: video.viewCount,
             publishedAt: video.publishedAt,

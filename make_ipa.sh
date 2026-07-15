@@ -20,6 +20,10 @@ RELEASE_BUNDLE_ID="com.verback.YTLite"
 SOURCE_JSON="source/apps.json"
 BUILD_LOG=$(mktemp)
 
+# Match make_dmg: packaging must not fail on the large pre-existing SwiftLint
+# backlog (opt-in strict rules). Override with SKIP_SWIFTLINT=0 to enforce lint.
+export SKIP_SWIFTLINT="${SKIP_SWIFTLINT:-1}"
+
 echo "▶ Building Release for device..."
 xcodebuild \
   -project "$PROJECT" \

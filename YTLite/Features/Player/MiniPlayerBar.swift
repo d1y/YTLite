@@ -3,6 +3,7 @@ import UIKit
 
 // PiP-style mini player: small floating card in the bottom-right corner.
 // Layout: [video 16:9] / [title + ✕]. Tap anywhere → expand.
+// On iOS/macCatalyst 26+ the card and info chrome use UIGlassEffect.
 final class MiniPlayerBar: UIView {
     // MARK: - Subviews
 
@@ -11,6 +12,11 @@ final class MiniPlayerBar: UIView {
     private let infoBar = UIView()
     private let titleLabel = UILabel()
     let closeButton = UIButton(type: .custom)
+
+    /// Glass / solid backdrop installed on the card (info + chrome layer).
+    private(set) var cardBackdrop: UIView?
+    /// Glass / solid backdrop under the info bar strip.
+    private(set) var infoBackdrop: UIView?
 
     // MARK: - State
 
@@ -102,17 +108,30 @@ final class MiniPlayerBar: UIView {
     @objc
     func applyTheme() {
         let theme = ThemeManager.shared
-        infoBar.backgroundColor = theme.surface
+        // Card-level Liquid Glass (UIGlassEffect on 26+).
+        cardBackdrop = GlassChrome.styleFloatingCard(self, theme: theme)
+        // Info strip also gets its own glass material so title/close sit on glass.
+        infoBar.backgroundColor = .clear
+        infoBackdrop = GlassChrome.installBackdrop(
+            in: infoBar,
+            cornerRadius: 0,
+            fallbackColor: theme.surface
+        )
         titleLabel.textColor = theme.primaryText
         closeButton.setImage(closeIcon(color: theme.primaryText), for: .normal)
+    }
+
+    /// Whether this mini player currently hosts a live `UIGlassEffect` layer.
+    var hostsLiquidGlass: Bool {
+        GlassChrome.hostsGlassEffect(self)
+            || GlassChrome.hostsGlassEffect(infoBar)
     }
 
     // MARK: - Card setup
 
     private func setupCard() {
         translatesAutoresizingMaskIntoConstraints = false
-        clipsToBounds = true
-        layer.cornerRadius = 10
+        cardBackdrop = GlassChrome.styleFloatingCard(self)
     }
 
     // MARK: - Subview setup
@@ -133,6 +152,7 @@ final class MiniPlayerBar: UIView {
         thumbnailFallback.clipsToBounds = true
 
         videoContainer.addSubview(thumbnailFallback)
+        // Above glass backdrop so video stays opaque content, not frosted.
         addSubview(videoContainer)
 
         NSLayoutConstraint.activate([
@@ -145,7 +165,13 @@ final class MiniPlayerBar: UIView {
 
     private func setupInfoBar() {
         infoBar.translatesAutoresizingMaskIntoConstraints = false
+        infoBar.backgroundColor = .clear
         addSubview(infoBar)
+        infoBackdrop = GlassChrome.installBackdrop(
+            in: infoBar,
+            cornerRadius: 0,
+            fallbackColor: ThemeManager.shared.surface
+        )
 
         titleLabel.translatesAutoresizingMaskIntoConstraints = false
         titleLabel.font = UIFont.systemFont(ofSize: 11, weight: .medium)
@@ -155,6 +181,7 @@ final class MiniPlayerBar: UIView {
 
         closeButton.translatesAutoresizingMaskIntoConstraints = false
         closeButton.addTarget(self, action: #selector(closeTapped), for: .touchUpInside)
+        MotionStyle.installPressFeedback(on: closeButton)
         infoBar.addSubview(closeButton)
 
         NSLayoutConstraint.activate([

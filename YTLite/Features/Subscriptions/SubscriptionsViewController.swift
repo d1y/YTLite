@@ -48,7 +48,8 @@ class SubscriptionsViewController: UIViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        title = "Subscriptions"
+        // No nav "订阅" — keep title string for tab sync only.
+        RootScreenTitle.clear(on: self, tabTitle: L10n.tr(L10n.Tab.subscriptions))
         AppLog.subs("viewDidLoad")
         setupTableView()
         setupSpinner()

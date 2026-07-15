@@ -12,6 +12,12 @@ extension SubscriptionVideoCell {
             layoutVertical(width: width)
         }
         layoutProgress()
+        if !channelAvatarView.isHidden {
+            let side = min(channelAvatarView.bounds.width, channelAvatarView.bounds.height)
+            if side > 1 {
+                CircleAvatarStyle.applySquareCircle(to: channelAvatarView, side: side)
+            }
+        }
     }
 
     private func layoutProgress() {
@@ -74,6 +80,7 @@ extension SubscriptionVideoCell {
         let afterTitle = titleLabel.frame.maxY + 8
         channelAvatarView.isHidden = false
         channelAvatarView.frame = CGRect(x: textX, y: afterTitle, width: avatarSz, height: avatarSz)
+        CircleAvatarStyle.apply(to: channelAvatarView, side: avatarSz)
         let labelX = textX + avatarSz + 10
         let labelW = width - labelX - hPad
         let chanY = afterTitle + (avatarSz - 15) / 2
@@ -103,6 +110,7 @@ extension SubscriptionVideoCell {
         channelAvatarView.isHidden = false
         let avatarY = thumbH + 10
         channelAvatarView.frame = CGRect(x: avatarX, y: avatarY, width: avatarSz, height: avatarSz)
+        CircleAvatarStyle.apply(to: channelAvatarView, side: avatarSz)
 
         let titleH = min(titleLabel.sizeThatFits(CGSize(width: textW, height: 52)).height, 40)
         titleLabel.frame = CGRect(x: textX, y: thumbH + 10, width: textW, height: titleH)

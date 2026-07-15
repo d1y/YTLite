@@ -64,9 +64,10 @@ extension WatchViewController: UICollectionViewDataSource {
         guard let video else {
             return cell
         }
-        let isLandscape =
-            view.bounds.width > view.bounds.height
-        cell.forceGridLayout = !isLandscape
+        // Related / playlist rail is always a single column of compact
+        // vertical cards. Horizontal "wide cell" layout breaks the Mac
+        // sidebar (title above thumb, floating avatar — Image #5).
+        cell.forceGridLayout = true
         cell.configure(with: video)
         configureChannelNavigation(for: cell, video: video)
         return cell

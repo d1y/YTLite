@@ -13,7 +13,12 @@ class VideosViewController: UIViewController {
     private(set) var collectionView: UICollectionView?
     let channelViewControllerFactory: (String, String) -> UIViewController
     let videoRouter: VideoRouter
-    let spinner = UIActivityIndicatorView(style: .white)
+    let spinner: UIActivityIndicatorView = {
+        if #available(iOS 13.0, *) {
+            return UIActivityIndicatorView(style: .medium)
+        }
+        return UIActivityIndicatorView(style: .white)
+    }()
     var isLoadingInitial = true
 
     private var continuationToken: String?
@@ -183,10 +188,20 @@ class VideosViewController: UIViewController {
         let theme = ThemeManager.shared
         view.backgroundColor = theme.background
         collectionView?.backgroundColor = theme.background
+        if #available(iOS 13.0, *) {
+            spinner.color = theme.isDark ? .white : .darkGray
+        }
+    }
+
+    /// Stop skeleton + spinner whether the fetch succeeded or failed.
+    func finishInitialLoading() {
+        isLoadingInitial = false
+        spinner.stopAnimating()
+        endRefreshing()
     }
 
     func setPage(_ page: FeedPage) {
-        isLoadingInitial = false
+        finishInitialLoading()
         seenVideoIds = []
         videos = []
         let newVideos = page.videos.filter {

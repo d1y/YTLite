@@ -10,6 +10,22 @@ enum NavChevron {
         case minimize
     }
 
+    /// Chevron glyph tint that tracks app light/dark theme (not hard-coded white).
+    static func glyphTint(theme: ThemeManager = .shared) -> UIColor {
+        theme.primaryText
+    }
+
+    /// Shared side length for Mac floating back (search / watch) — matches
+    /// the playlist `NavChevronButton` visual weight.
+    static var macFloatingSide: CGFloat {
+        ResponsiveMetrics.macSearchControlHeight()
+    }
+
+    /// Soft circular fill for floating Mac backs (not opaque black, not double glass).
+    static func macFloatingFill(theme: ThemeManager = .shared) -> UIColor {
+        ResponsiveMetrics.macSearchBackFill(isDark: theme.isDark)
+    }
+
     static func barButton(
         kind: Kind,
         target: Any?,
@@ -23,9 +39,38 @@ enum NavChevron {
     static func image(kind: Kind) -> UIImage? {
         if #available(iOS 13.0, *) {
             let name = kind == .back ? "chevron.left" : "chevron.down"
-            return ThemeManager.navChevron(systemName: name)
+            // Slightly smaller than old 21pt so the glyph sits cleanly inside
+            // the iOS 26 liquid-glass circle without optical offset.
+            let cfg = UIImage.SymbolConfiguration(pointSize: 17, weight: .semibold)
+            return UIImage(systemName: name, withConfiguration: cfg)?
+                .withRenderingMode(.alwaysTemplate)
         }
         return drawnChevron(kind: kind)
+    }
+
+    /// Style a floating Mac back/close `UIButton` like the playlist nav chevron:
+    /// same SF Symbol weight, theme glyph tint, soft circular fill (single layer).
+    static func applyMacFloatingStyle(
+        to button: UIButton,
+        kind: Kind = .back,
+        theme: ThemeManager = .shared,
+        side: CGFloat? = nil
+    ) {
+        let diameter = side ?? macFloatingSide
+        let glyph = image(kind: kind)?.withRenderingMode(.alwaysTemplate)
+        button.setImage(glyph, for: .normal)
+        button.tintColor = glyphTint(theme: theme)
+        button.backgroundColor = macFloatingFill(theme: theme)
+        button.layer.cornerRadius = diameter / 2
+        button.clipsToBounds = true
+        if #available(iOS 13.0, *) {
+            button.layer.cornerCurve = .circular
+        }
+        button.contentHorizontalAlignment = .center
+        button.contentVerticalAlignment = .center
+        button.imageView?.contentMode = .scaleAspectFit
+        button.contentEdgeInsets = .zero
+        button.imageEdgeInsets = .zero
     }
 
     // MARK: - Pre-iOS 13 fallback (no SF Symbols)
@@ -70,37 +115,56 @@ enum NavChevron {
 /// button), so after layout the view checks where the bar actually put it
 /// and shifts itself to sit exactly `edgeInset` from the screen edge.
 final class NavChevronButton: UIView {
-    private static let edgeInset: CGFloat = 16
-    private static let side: CGFloat = 44
+    /// Match iOS 26 liquid-glass circle (~36pt), not oversized 44pt hit box.
+    private static let side: CGFloat = 36
 
     private let button = UIButton(type: .system)
+    private let kind: NavChevron.Kind
 
     override var intrinsicContentSize: CGSize {
         CGSize(width: Self.side, height: Self.side)
     }
 
-    // The bar repositions item views by setting frame/center; a move that
-    // doesn't change the size never triggers layoutSubviews, which left a
-    // stale shift baked in. Re-align on every reposition instead — the
-    // alignment only touches `transform`, so this cannot recurse.
-    override var frame: CGRect {
-        didSet { alignToScreenEdge() }
-    }
-
-    override var center: CGPoint {
-        didSet { alignToScreenEdge() }
-    }
-
     init(kind: NavChevron.Kind, target: Any?, action: Selector) {
+        self.kind = kind
         super.init(frame: CGRect(x: 0, y: 0, width: Self.side, height: Self.side))
-        button.setImage(NavChevron.image(kind: kind), for: .normal)
-        // Glyph at the view's leading edge; the rest of the 44pt width
-        // stays as tap area.
-        button.contentHorizontalAlignment = .leading
+        let image = NavChevron.image(kind: kind)?.withRenderingMode(.alwaysTemplate)
+        button.setImage(image, for: .normal)
+        // Geometric center inside the glass pill — never leading/edge transform.
+        button.contentHorizontalAlignment = .center
+        button.contentVerticalAlignment = .center
+        button.imageView?.contentMode = .scaleAspectFit
+        // SF `chevron.left` optical mass sits left of its box; nudge so it
+        // reads centered in the circle (watch was too far right, search too left
+        // when we used a wide 44pt host + edge transform).
+        if kind == .back {
+            button.imageEdgeInsets = UIEdgeInsets(top: 0, left: 0.5, bottom: 0, right: -0.5)
+        } else {
+            button.imageEdgeInsets = .zero
+        }
         button.addTarget(target, action: action, for: .touchUpInside)
         button.frame = bounds
         button.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        isUserInteractionEnabled = true
+        button.isUserInteractionEnabled = true
         addSubview(button)
+        accessibilityTraits = .button
+        accessibilityLabel = kind == .back ? "Back" : "Close"
+        backgroundColor = .clear
+        isOpaque = false
+        // Never translate this view — Liquid Glass wraps the bar item; a
+        // transform shifts only the glyph and looks off-center in the pill.
+        transform = .identity
+        applyTheme()
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(applyTheme),
+            name: ThemeManager.didChangeNotification,
+            object: nil
+        )
+        if PlatformStyle.isMac {
+            MacPointerHover.install(on: button)
+        }
     }
 
     @available(*, unavailable)
@@ -108,38 +172,48 @@ final class NavChevronButton: UIView {
         fatalError("init(coder:) is not supported")
     }
 
+    deinit {
+        NotificationCenter.default.removeObserver(self)
+    }
+
+    override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
+        super.traitCollectionDidChange(previousTraitCollection)
+        if #available(iOS 13.0, *) {
+            if traitCollection.hasDifferentColorAppearance(
+                comparedTo: previousTraitCollection
+            ) {
+                ThemeManager.shared.refreshAutoTheme()
+                applyTheme()
+            }
+        }
+    }
+
+    @objc
+    func applyTheme() {
+        button.tintColor = NavChevron.glyphTint()
+        button.backgroundColor = .clear
+        backgroundColor = .clear
+        transform = .identity
+    }
+
     override func layoutSubviews() {
         super.layoutSubviews()
-        alignToScreenEdge()
+        transform = .identity
+        button.frame = bounds
+        // Keep image centered after bar re-layout.
+        button.contentHorizontalAlignment = .center
+        button.contentVerticalAlignment = .center
     }
 
     override func didMoveToWindow() {
         super.didMoveToWindow()
-        alignToScreenEdge()
-    }
-
-    /// Re-measures and shifts the view. Call after a navigation transition
-    /// settles — alignment computed mid-animation bakes in the slot's
-    /// in-flight position.
-    func realign() {
-        alignToScreenEdge()
-    }
-
-    private func alignToScreenEdge() {
-        guard let window else {
-            transform = .identity
-            return
-        }
+        applyTheme()
         transform = .identity
-        let shift: CGFloat
-        if effectiveUserInterfaceLayoutDirection == .rightToLeft {
-            let right = convert(CGPoint(x: bounds.width, y: 0), to: window).x
-            shift = (window.bounds.width - Self.edgeInset) - right
-        } else {
-            shift = Self.edgeInset - convert(CGPoint.zero, to: window).x
-        }
-        if abs(shift) > 0.5 {
-            transform = CGAffineTransform(translationX: shift, y: 0)
-        }
+    }
+
+    /// Kept for RotatingNavigationController transition callbacks.
+    func realign() {
+        transform = .identity
+        setNeedsLayout()
     }
 }

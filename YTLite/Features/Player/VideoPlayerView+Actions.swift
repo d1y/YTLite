@@ -108,10 +108,24 @@ extension VideoPlayerView {
         guard let player else {
             return
         }
-        if player.rate > 0 {
+        if ResponsiveMetrics.isPlayerActivelyPlaying(rate: player.rate) {
+            // Fast path: play → pause must be instant. Do not wait on
+            // buffering / prepare-to-play work that only matters for resume.
+            // Set rate first, then pause, then paint the icon synchronously.
+            player.rate = 0
             player.pause()
+            spinner.stopAnimating()
+            setCenter(hidden: false)
+            updatePlayPauseIcon()
         } else {
-            player.play()
+            // Resume may still buffer; show spinner via timeControlStatus KVO.
+            if abs(playbackSpeed - 1.0) > 0.01 {
+                player.rate = playbackSpeed
+            } else {
+                player.play()
+            }
+            // Optimistic icon — KVO will reaffirm when rate settles.
+            updatePlayPauseIcon()
         }
         scheduleAutoHide()
     }
@@ -177,16 +191,19 @@ extension VideoPlayerView {
 extension VideoPlayerView {
     func updatePlayPauseIcon() {
         let isPlaying = (player?.rate ?? 0) > 0
+        let size = ResponsiveMetrics.playControlSize(forWidth: lastMetricsWidth)
         let icon = isPlaying
-            ? PlayerIcons.pause()
-            : PlayerIcons.play()
+            ? PlayerIcons.pause(size: size)
+            : PlayerIcons.play(size: size)
         playPauseButton.setImage(icon, for: .normal)
     }
 
     func updateFullscreenIcon() {
+        let size = ResponsiveMetrics.fullscreenGlyphSize(forWidth: lastMetricsWidth)
         fullscreenButton.setImage(
             PlayerIcons.fullscreen(
-                isFullscreen: isFullscreen
+                isFullscreen: isFullscreen,
+                size: size
             ),
             for: .normal
         )

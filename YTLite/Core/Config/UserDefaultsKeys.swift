@@ -49,6 +49,8 @@ enum UserDefaultsKeys {
     enum Player {
         static let backgroundPlayback = "player_backgroundPlayback"
         static let pipEnabled = "player_pipEnabled"
+        /// Auto-enter Picture-in-Picture when the app backgrounds (requires master PiP on).
+        static let autoPiP = "player_autoPiP"
         static let hideStatusBarInFullscreen = "player_hideStatusBarFullscreen"
     }
 
@@ -64,6 +66,11 @@ enum UserDefaultsKeys {
 
     enum Migration {
         static let playbackSourceAuto = "migration_playbackSourceAuto"
+    }
+
+    enum Language {
+        /// `AppLanguage.rawValue` or missing for system default.
+        static let preference = "app_language_preference"
     }
 }
 
