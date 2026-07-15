@@ -7,8 +7,6 @@
 #   IPA_VERSION            version for the filename + CFBundleShortVersionString
 #                          (default: MARKETING_VERSION from build settings)
 #   BUILD_NUMBER           sets CFBundleVersion when provided
-#   UPDATE_SOURCE=0        skip patching source/apps.json (CI patches it only
-#                          after the release is published, so the URL is live)
 #   XCODEBUILD_EXTRA_ARGS  extra xcodebuild args, e.g. CODE_SIGNING_ALLOWED=NO
 
 set -e
@@ -17,7 +15,6 @@ APP_NAME="YTLite"
 PROJECT="YTLite.xcodeproj"
 SCHEME="YTVLite"
 RELEASE_BUNDLE_ID="com.verback.YTLite"
-SOURCE_JSON="source/apps.json"
 BUILD_LOG=$(mktemp)
 
 # Match make_dmg: packaging must not fail on the large pre-existing SwiftLint
@@ -109,21 +106,6 @@ mkdir "$TMP/Payload"
 cp -r "$APP_PATH" "$TMP/Payload/"
 (cd "$TMP" && zip -qr "$OLDPWD/$OUTPUT" Payload)
 rm -rf "$TMP"
-
-IPA_SIZE=$(stat -f%z "$OUTPUT" 2>/dev/null || stat -c%s "$OUTPUT" 2>/dev/null)
-DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-REPO_URL="https://github.com/verback2308/YTLite"
-DOWNLOAD_URL="$REPO_URL/releases/download/${VERSION}/${OUTPUT}"
-
-if [ "${UPDATE_SOURCE:-1}" = "1" ]; then
-  echo "▶ Updating source: $SOURCE_JSON"
-  python3 scripts/update_source.py \
-    --version "$VERSION" \
-    --download-url "$DOWNLOAD_URL" \
-    --size "$IPA_SIZE" \
-    --date "$DATE" \
-    --file "$SOURCE_JSON"
-fi
 
 SIZE=$(du -sh "$OUTPUT" | cut -f1)
 echo "✅ $OUTPUT ($SIZE) — ready to share"

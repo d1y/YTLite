@@ -47,17 +47,9 @@ Install the `.ipa` package directly:
 
 ### Non-jailbroken devices
 
-**Option 1 — Add source (recommended)**
+Download the IPA from [Releases](../../releases) and install via **SideStore**, **AltStore**, or **LiveContainer**.
 
-Add the YTLite source to your sideloading app to receive automatic updates:
-
-[![Add Source](https://github.com/StikStore/altdirect/raw/main/assets/png/AltSource_Blue.png?raw=true)](https://stikstore.app/altdirect/?url=https://raw.githubusercontent.com/verback2308/YTLite/main/source/apps.json)
-
-**Option 2 — Manual install**
-
-Download the IPA and install via **SideStore**, **AltStore**, or **LiveContainer**.
-
-**Option 3 — Build from source**
+### Build from source
 
 ```bash
 git clone https://github.com/verback2308/YTLite.git
